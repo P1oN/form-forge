@@ -1,9 +1,11 @@
-import { fillPdf, runPipeline } from '@form-forge/core';
+import { BrowserTesseractOcrEngine, GeminiVisionProvider, fillPdf, runPipeline } from '@form-forge/core';
 import type { FillPlan } from '@form-forge/core';
 import { useMemo, useState } from 'react';
 
 import type { PipelineState } from '../types';
 import { fileToArrayBuffer } from '../utils/file';
+
+export type RecognitionEngine = 'tesseract' | 'gemini';
 
 const extractErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -22,7 +24,7 @@ export const usePipeline = () => {
   });
 
   const run = useMemo(
-    () => async (templateFile: File, clientFiles: File[]) => {
+    () => async (templateFile: File, clientFiles: File[], engine: RecognitionEngine) => {
       setState({ running: true, progress: [] });
       try {
         const templatePdf = await fileToArrayBuffer(templateFile);
@@ -34,10 +36,36 @@ export const usePipeline = () => {
           })),
         );
 
+        const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim();
+        const geminiModel = import.meta.env.VITE_GEMINI_MODEL?.trim();
+
+        const llm =
+          engine === 'gemini'
+            ? new GeminiVisionProvider({
+                apiKey: geminiApiKey || '',
+                logger: console,
+                ...(geminiModel ? { model: geminiModel } : {}),
+              })
+            : undefined;
+
+        if (engine === 'gemini' && !geminiApiKey) {
+          throw new Error('Gemini selected but VITE_GEMINI_API_KEY is not configured.');
+        }
+
         const result = await runPipeline({
           templatePdf,
           clientFiles: payload,
+          ...(engine === 'tesseract' ? { ocrEngine: new BrowserTesseractOcrEngine() } : {}),
+          ...(engine === 'gemini' ? { llm } : {}),
+          config: {
+            llmMode: engine === 'gemini' ? 'auto' : 'disabled',
+          },
           onProgress: (event) => {
+            console.info('Pipeline progress', {
+              phase: event.phase,
+              percent: event.percent,
+              message: event.message,
+            });
             setState((current) => ({
               ...current,
               progress: [...current.progress, event],
@@ -52,6 +80,7 @@ export const usePipeline = () => {
         }));
       } catch (error) {
         const message = extractErrorMessage(error);
+        console.error('Pipeline run failed', { message });
         setState({ running: false, progress: [], error: message });
       }
     },

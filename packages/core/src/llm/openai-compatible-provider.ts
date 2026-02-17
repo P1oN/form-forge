@@ -23,6 +23,7 @@ export class OpenAiCompatibleProvider implements LLMProvider {
     template: TemplateInventory;
     extracted: ExtractedBlocks;
     unresolvedFieldIds: string[];
+    clientFiles?: Array<{ name: string; data: ArrayBuffer; mime: string }> | undefined;
   }): Promise<LLMMappingResult> {
     const doFetch = this.options.fetchImpl ?? fetch;
 
@@ -47,6 +48,11 @@ export class OpenAiCompatibleProvider implements LLMProvider {
               template: args.template,
               extracted: args.extracted,
               unresolvedFieldIds: args.unresolvedFieldIds,
+              clientFiles: args.clientFiles?.map((file) => ({
+                name: file.name,
+                mime: file.mime,
+                sizeBytes: file.data.byteLength,
+              })),
             }),
           },
         ],

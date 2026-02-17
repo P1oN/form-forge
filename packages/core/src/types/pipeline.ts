@@ -2,6 +2,7 @@ import type { CacheAdapter, Logger } from './common';
 import type { ManualEdit } from './fill-plan';
 import type { LLMProvider } from './provider';
 import type { TemplateRegionConfig } from './template';
+import type { OcrEngine } from '../workers/ocr';
 
 export type PipelinePhase = 'A' | 'B' | 'C' | 'D';
 
@@ -33,6 +34,7 @@ export interface PipelineArgs {
   clientFiles: Array<{ name: string; data: ArrayBuffer; mime: string }>;
   templateRegionConfig?: TemplateRegionConfig | undefined;
   llm?: LLMProvider | undefined;
+  ocrEngine?: OcrEngine | undefined;
   config?: Partial<PipelineConfig> | undefined;
   manualEdits?: ManualEdit[] | undefined;
   onProgress?: ((event: PipelineProgressEvent) => void) | undefined;

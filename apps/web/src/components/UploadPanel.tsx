@@ -1,10 +1,14 @@
 import { useRef } from 'react';
 
+import type { RecognitionEngine } from '../state/use-pipeline';
+
 interface UploadPanelProps {
   templateFile?: File | undefined;
   clientFiles: File[];
+  recognitionEngine: RecognitionEngine;
   onTemplateSelect: (file?: File | undefined) => void;
   onClientSelect: (files: File[]) => void;
+  onRecognitionEngineChange: (engine: RecognitionEngine) => void;
   onLoadFieldTest: () => Promise<void>;
 }
 
@@ -31,6 +35,16 @@ export const UploadPanel = (props: UploadPanelProps) => {
           multiple
           onChange={(e) => props.onClientSelect(Array.from(e.target.files ?? []))}
         />
+      </label>
+      <label>
+        Recognition Engine
+        <select
+          value={props.recognitionEngine}
+          onChange={(e) => props.onRecognitionEngineChange(e.target.value as RecognitionEngine)}
+        >
+          <option value="gemini">Gemini</option>
+          <option value="tesseract">Tesseract</option>
+        </select>
       </label>
       <div className="actions">
         <button type="button" onClick={() => void props.onLoadFieldTest()}>

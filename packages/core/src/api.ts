@@ -25,12 +25,14 @@ export const extractClientData = async (
 export const mapToTemplate = async (args: {
   template: TemplateInventory;
   extracted: ExtractedBlocks;
+  clientFiles?: Array<{ name: string; data: ArrayBuffer; mime: string }> | undefined;
   llm?: LLMProvider | undefined;
 }): Promise<{ csv: string; fillPlan: FillPlan; report: ValidationReport }> => {
   const config = resolvePipelineConfig();
   return mapImpl({
     template: args.template,
     extracted: args.extracted,
+    ...(args.clientFiles ? { clientFiles: args.clientFiles } : {}),
     llmMode: config.llmMode,
     threshold: config.deterministicThreshold,
     ...(args.llm ? { llm: args.llm } : {}),

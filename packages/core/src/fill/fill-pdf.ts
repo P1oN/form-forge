@@ -4,6 +4,7 @@ import type { PDFFont, PDFPage } from 'pdf-lib';
 import { FillError } from '../errors';
 import { fillPlanSchema } from '../schemas';
 import type { FillPlan } from '../types/fill-plan';
+import { normalizePdfArrayBuffer } from '../utils/pdf-bytes';
 
 const drawFlatEntry = (
   page: PDFPage,
@@ -51,7 +52,7 @@ export const fillPdf = async (templatePdf: ArrayBuffer, fillPlan: FillPlan): Pro
   const validated = fillPlanSchema.parse(fillPlan);
 
   try {
-    const pdf = await PDFDocument.load(templatePdf);
+    const pdf = await PDFDocument.load(normalizePdfArrayBuffer(templatePdf));
     const form = pdf.getForm();
     const hasAcro = form.getFields().length > 0;
 

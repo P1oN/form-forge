@@ -7,6 +7,7 @@ import type { ExtractedBlock, ExtractedBlocks } from '../types/extraction';
 import type { PipelineConfig } from '../types/pipeline';
 import { nowIso } from '../utils/clock';
 import { hashBytes } from '../utils/hash';
+import { normalizePdfArrayBuffer } from '../utils/pdf-bytes';
 import { NoopOcrEngine } from '../workers/ocr';
 import type { OcrEngine } from '../workers/ocr';
 
@@ -39,7 +40,7 @@ const loadPdfTextBlocks = async (
   limits: PipelineConfig['limits'],
 ): Promise<Array<{ pageIndex: number; blocks: ExtractedBlock[] }>> => {
   try {
-    const task = getDocument({ data: pdfBytes });
+    const task = getDocument({ data: normalizePdfArrayBuffer(pdfBytes) });
     const doc = await task.promise;
     if (doc.numPages > limits.maxPagesPerFile) {
       throw new InputValidationError('PDF exceeds maxPagesPerFile limit.', {
@@ -119,23 +120,39 @@ export const extractClientData = async (
         });
       }
 
-      pdfPages.forEach((page) => pages.push(page));
       const hasText = pdfPages.some((p) => p.blocks.length > 0);
       if (!hasText) {
         const hash = await hashBytes(file.data);
         const cached = (await config.ocrCache?.get(hash)) as ExtractedBlock[] | undefined;
+        const attachToFirstPage = (blocks: ExtractedBlock[]) => {
+          if (blocks.length === 0) {
+            return;
+          }
+          const firstPage = pdfPages[0];
+          if (!firstPage) {
+            return;
+          }
+          firstPage.blocks = [...firstPage.blocks, ...blocks];
+        };
+
         if (cached) {
-          pages.push({ pageIndex: 0, blocks: cached });
-          continue;
-        }
-        try {
-          const blocks = await ocrEngine.run({ imageData: new Uint8Array(file.data), pageIndex: 0 });
-          pages.push({ pageIndex: 0, blocks });
-          await config.ocrCache?.set(hash, blocks);
-        } catch (error) {
-          throw new OcrError('OCR failed for scanned PDF.', error);
+          attachToFirstPage(cached);
+        } else {
+          try {
+            const blocks = await ocrEngine.run({ imageData: new Uint8Array(file.data), pageIndex: 0 });
+            attachToFirstPage(blocks);
+            await config.ocrCache?.set(hash, blocks);
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : 'unknown OCR error';
+            config.logger?.warn('OCR skipped for scanned PDF; continuing without OCR blocks.', {
+              fileName: file.name,
+              reason,
+            });
+          }
         }
       }
+
+      pdfPages.forEach((page) => pages.push(page));
       continue;
     }
 

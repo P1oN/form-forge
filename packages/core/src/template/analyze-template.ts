@@ -4,6 +4,7 @@ import { PdfParseError } from '../errors';
 import { templateInventorySchema, templateRegionConfigSchema } from '../schemas';
 import type { TemplateInventory, TemplateRegionConfig } from '../types/template';
 import { nowIso } from '../utils/clock';
+import { normalizePdfArrayBuffer } from '../utils/pdf-bytes';
 
 const normalizeBBox = (
   x: number,
@@ -26,7 +27,7 @@ const inferTypeFromName = (name: string) => {
 };
 
 const loadTemplatePdf = async (templatePdf: ArrayBuffer): Promise<PDFDocument> => {
-  const bytes = new Uint8Array(templatePdf);
+  const bytes = new Uint8Array(normalizePdfArrayBuffer(templatePdf));
 
   try {
     return await PDFDocument.load(bytes, {

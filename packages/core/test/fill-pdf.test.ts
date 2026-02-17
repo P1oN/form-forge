@@ -12,6 +12,13 @@ const createAcroPdf = async (): Promise<ArrayBuffer> => {
   return doc.save();
 };
 
+const withLeadingBytes = (pdf: ArrayBuffer, count = 552): ArrayBuffer => {
+  const src = new Uint8Array(pdf);
+  const dst = new Uint8Array(count + src.byteLength);
+  dst.set(src, count);
+  return dst.buffer;
+};
+
 describe('fillPdf', () => {
   it('fills acroform fields', async () => {
     const pdf = await createAcroPdf();
@@ -56,5 +63,27 @@ describe('fillPdf', () => {
     });
 
     expect(filled.byteLength).toBeGreaterThan(base.byteLength);
+  });
+
+  it('fills acroform when template buffer has bytes before PDF header', async () => {
+    const pdf = withLeadingBytes(await createAcroPdf());
+
+    const filled = await fillPdf(pdf, {
+      entries: [
+        {
+          fieldId: 'full_name',
+          fieldType: 'text',
+          value: 'Grace Hopper',
+          confidence: 1,
+          source: { pageIndex: 0, sourceHint: 'manual' },
+          targetPdfFieldName: 'full_name',
+        },
+      ],
+      unresolved: [],
+      createdAt: new Date().toISOString(),
+    });
+
+    const loaded = await PDFDocument.load(filled);
+    expect(loaded.getForm().getTextField('full_name').getText()).toBe('Grace Hopper');
   });
 });

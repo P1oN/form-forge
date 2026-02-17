@@ -14,6 +14,7 @@ export {
 } from './errors';
 export { applyManualEdits } from './fill/apply-manual-edits';
 export { MockLLMProvider } from './llm/mock-provider';
+export { GeminiVisionProvider } from './llm/gemini-vision-provider';
 export { OpenAiCompatibleProvider } from './llm/openai-compatible-provider';
 export { defaultPipelineConfig, resolvePipelineConfig } from './pipeline/config';
 export * from './schemas';

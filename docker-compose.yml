@@ -23,6 +23,22 @@ services:
       - "5173:5173"
     command: pnpm --filter @form-forge/web dev --host 0.0.0.0 --port 5173
 
+  dev-ssh:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev-ssh
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - pnpm-store:/pnpm/store
+      - node-modules:/workspace/node_modules
+    ports:
+      - "2222:22"
+    environment:
+      DEV_SSH_USER: node
+      DEV_SSH_UID: ${UID:-1000}
+      DEV_SSH_GID: ${GID:-1000}
+
 volumes:
   pnpm-store:
   node-modules:

@@ -10,7 +10,10 @@ export class MockLLMProvider implements LLMProvider {
     template: TemplateInventory;
     extracted: ExtractedBlocks;
     unresolvedFieldIds: string[];
+    clientFiles?: Array<{ name: string; data: ArrayBuffer; mime: string }> | undefined;
   }): Promise<LLMMappingResult> {
+    void args.extracted;
+    void args.clientFiles;
     const entries = args.template.fields
       .filter((field) => args.unresolvedFieldIds.includes(field.fieldId))
       .map((field) => ({

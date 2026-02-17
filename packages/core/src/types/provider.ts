@@ -13,5 +13,6 @@ export interface LLMProvider {
     template: TemplateInventory;
     extracted: ExtractedBlocks;
     unresolvedFieldIds: string[];
+    clientFiles?: Array<{ name: string; data: ArrayBuffer; mime: string }> | undefined;
   }): Promise<LLMMappingResult>;
 }

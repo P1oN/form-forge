@@ -74,6 +74,39 @@ npm run docker:lint
 npm run docker:typecheck
 ```
 
+## Zed Remote SSH Into Dev Container
+
+This lets Zed use container-installed dependencies (no host install needed).
+
+1. Create an SSH key for container access (if you do not already have one):
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/form_forge_dev -C "form-forge-dev"
+```
+2. Prepare authorized keys file for the container:
+```bash
+mkdir -p .devcontainer
+cp ~/.ssh/form_forge_dev.pub .devcontainer/authorized_keys
+```
+3. Start the SSH dev container:
+```bash
+docker compose up -d dev-ssh
+```
+4. Install dependencies inside container (one-time per volume):
+```bash
+docker compose exec dev-ssh pnpm install
+```
+5. Add this SSH host to `~/.ssh/config`:
+```sshconfig
+Host form-forge-dev
+  HostName 127.0.0.1
+  Port 2222
+  User node
+  IdentityFile ~/.ssh/form_forge_dev
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+```
+6. In Zed, use Remote SSH and connect to `form-forge-dev`, then open `/workspace`.
+
 ## Native setup (optional)
 
 ```bash
@@ -82,6 +115,23 @@ pnpm build
 pnpm test
 pnpm dev
 ```
+
+### Gemini configuration (web app)
+
+For local Gemini vision fallback in `apps/web`, set:
+
+```bash
+VITE_GEMINI_API_KEY=your_api_key
+# Optional override (default: gemini-2.5-flash-lite)
+VITE_GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+Env file location:
+- In this monorepo, `apps/web` is configured to read env vars from the repo root (`/Users/bm/Documents/repos/form-forge/.env`).
+
+In the UI, choose recognition engine:
+- `Tesseract`: browser OCR fallback
+- `Gemini`: vision LLM fallback for unresolved fields (checkboxes + handwriting/text)
 
 ## Field test walkthrough
 
