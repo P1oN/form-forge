@@ -1,0 +1,51 @@
+# AGENTS
+
+## Purpose
+
+This repository builds a deterministic-first, browser-first scan-to-fillable-PDF pipeline.
+
+## Engineering rules
+
+- Prefer deterministic parsing/mapping/filling before any LLM call.
+- Keep all public contracts schema-validated with `zod`.
+- Use strict TypeScript, no implicit `any`.
+- Maintain typed error classes with stable error codes.
+- Use relative bboxes (`0..1`) everywhere.
+
+## Security and privacy
+
+- Do not send document content externally unless LLM provider is explicitly configured.
+- Minimize data passed to LLM providers.
+- Never log full raw extracted content or PII values in plaintext.
+
+## Testing expectations
+
+Before submitting changes:
+- Prefer Docker commands:
+  - `npm run docker:lint`
+  - `npm run docker:typecheck`
+  - `npm run docker:test`
+- Native fallback:
+  - `pnpm lint`
+  - `pnpm typecheck`
+  - `pnpm test`
+
+Include tests for:
+- schema validation paths
+- deterministic mapping behavior
+- CSV RFC4180 output
+- fill behavior (acroform + flat)
+- LLM fallback behavior with mock provider
+
+## Contribution checklist
+
+- Preserve API compatibility in `packages/core/src/index.ts` exports.
+- Add/update docs for any config or behavior change.
+- Keep modules small and explicit; avoid hidden side effects.
+
+## Known bugs
+
+- Example PDFs can fail during template analysis with:
+  - `Pipeline execution failed: Failed to analyze template PDF. Failed to parse PDF document (line:38 col:0 offset=552): No PDF header found`
+  - Repro inputs: `/Users/bm/Documents/repos/form-forge/examples/empty_form.pdf` + `/Users/bm/Documents/repos/form-forge/examples/raw_filled.pdf`
+  - Status: open, not fixed yet.
