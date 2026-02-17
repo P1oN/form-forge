@@ -144,13 +144,6 @@ In the UI, choose recognition engine:
 
 Note: field-test loader uses Vite dev `@fs` path access and is intended for local demo.
 
-## Known issues
-
-- Example PDFs currently fail in some runs during template analysis:
-  - Input: `/Users/bm/Documents/repos/form-forge/examples/empty_form.pdf`
-  - Error: `Pipeline execution failed: Failed to analyze template PDF. Failed to parse PDF document (line:38 col:0 offset=552): No PDF header found`
-  - Status: known bug, not fixed yet.
-
 ## Tradeoffs
 
 - Deterministic mapping is prioritized for repeatability.
