@@ -102,7 +102,7 @@ export class GeminiVisionProvider implements LLMProvider {
   public constructor(options: GeminiVisionOptions) {
     this.options = {
       model: options.model ?? DEFAULT_MODEL,
-      confidenceThreshold: options.confidenceThreshold ?? 0.6,
+      confidenceThreshold: options.confidenceThreshold ?? 0.4,
       maxRetries: options.maxRetries ?? 2,
       retryBaseMs: options.retryBaseMs ?? 800,
       logger: options.logger,

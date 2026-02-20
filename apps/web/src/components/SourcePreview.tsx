@@ -6,63 +6,141 @@ GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.
 interface SourcePreviewProps {
   sourceFile?: File | undefined;
   bbox?: [number, number, number, number] | undefined;
+  pageIndex?: number | undefined;
+  sourceHint?: string | undefined;
+  strokeColor?: string;
 }
 
 const drawBbox = (
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   bbox?: [number, number, number, number] | undefined,
+  sourceHint?: string,
+  strokeColor = '#c9382b',
 ): void => {
   if (!bbox) {
     return;
   }
   const [x, y, w, h] = bbox;
-  ctx.strokeStyle = '#c9382b';
+  const isBottomLeftOrigin = sourceHint === 'pdf_text' || sourceHint === 'gemini_vlm';
+  const drawY = isBottomLeftOrigin ? 1 - y - h : y;
+
+  ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 2;
-  ctx.strokeRect(x * canvas.width, y * canvas.height, w * canvas.width, h * canvas.height);
+  ctx.strokeRect(x * canvas.width, drawY * canvas.height, w * canvas.width, h * canvas.height);
 };
 
-export const SourcePreview = ({ sourceFile, bbox }: SourcePreviewProps) => {
+export const SourcePreview = ({
+  sourceFile,
+  bbox,
+  pageIndex = 0,
+  sourceHint,
+  strokeColor = '#c9382b',
+}: SourcePreviewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderSequenceRef = useRef(0);
 
   useEffect(() => {
     if (!sourceFile || !canvasRef.current) {
       return;
     }
 
+    renderSequenceRef.current += 1;
+    const renderSequence = renderSequenceRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       return;
     }
+    let cancelled = false;
+    let pdfRenderTask: { promise: Promise<void>; cancel: () => void } | null = null;
+    let objectUrl: string | null = null;
 
     const render = async () => {
       if (sourceFile.type === 'application/pdf') {
         const bytes = await sourceFile.arrayBuffer();
-        const doc = await getDocument({ data: bytes }).promise;
-        const page = await doc.getPage(1);
+        if (cancelled || renderSequence !== renderSequenceRef.current) {
+          return;
+        }
+
+        const loadingTask = getDocument({ data: bytes });
+        const doc = await loadingTask.promise;
+        if (cancelled || renderSequence !== renderSequenceRef.current) {
+          await loadingTask.destroy();
+          return;
+        }
+
+        const safePageIndex = Math.max(0, Math.min(pageIndex, doc.numPages - 1));
+        const page = await doc.getPage(safePageIndex + 1);
         const viewport = page.getViewport({ scale: 0.8 });
+        if (cancelled || renderSequence !== renderSequenceRef.current) {
+          await loadingTask.destroy();
+          return;
+        }
+
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        drawBbox(ctx, canvas, bbox);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        pdfRenderTask = page.render({ canvasContext: ctx, viewport });
+        await pdfRenderTask.promise;
+        if (cancelled || renderSequence !== renderSequenceRef.current) {
+          await loadingTask.destroy();
+          return;
+        }
+
+        drawBbox(ctx, canvas, bbox, sourceHint, strokeColor);
+        await loadingTask.destroy();
         return;
       }
 
       const url = URL.createObjectURL(sourceFile);
+      objectUrl = url;
       const image = new Image();
       image.onload = () => {
+        if (cancelled || renderSequence !== renderSequenceRef.current) {
+          URL.revokeObjectURL(url);
+          return;
+        }
         canvas.width = image.width;
         canvas.height = image.height;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(image, 0, 0);
-        drawBbox(ctx, canvas, bbox);
+        drawBbox(ctx, canvas, bbox, sourceHint, strokeColor);
         URL.revokeObjectURL(url);
+        objectUrl = null;
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        objectUrl = null;
       };
       image.src = url;
     };
 
-    void render();
-  }, [sourceFile, bbox]);
+    void render().catch((error: unknown) => {
+      const maybeNamed = error as { name?: string };
+      if (maybeNamed?.name === 'RenderingCancelledException') {
+        return;
+      }
+      console.error('SourcePreview render failed', error);
+    });
+
+    return () => {
+      cancelled = true;
+      if (pdfRenderTask) {
+        try {
+          pdfRenderTask.cancel();
+        } catch {
+          // no-op
+        }
+      }
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [sourceFile, bbox, pageIndex, sourceHint, strokeColor]);
 
   return <canvas ref={canvasRef} className="source-canvas" />;
 };

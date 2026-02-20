@@ -124,6 +124,8 @@ For local Gemini vision fallback in `apps/web`, set:
 VITE_GEMINI_API_KEY=your_api_key
 # Optional override (default: gemini-2.5-flash-lite)
 VITE_GEMINI_MODEL=gemini-2.5-flash-lite
+# Optional confidence cutoff for Gemini answers (default: 0.4)
+VITE_GEMINI_CONFIDENCE_THRESHOLD=0.4
 ```
 
 Env file location:

@@ -21,7 +21,7 @@ This repository builds a deterministic-first, browser-first scan-to-fillable-PDF
 ## Testing expectations
 
 Before submitting changes:
-- Prefer Docker commands:
+- Repository tests must be run through Docker:
   - `npm run docker:lint`
   - `npm run docker:typecheck`
   - `npm run docker:test`

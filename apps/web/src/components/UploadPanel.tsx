@@ -9,7 +9,6 @@ interface UploadPanelProps {
   onTemplateSelect: (file?: File | undefined) => void;
   onClientSelect: (files: File[]) => void;
   onRecognitionEngineChange: (engine: RecognitionEngine) => void;
-  onLoadFieldTest: () => Promise<void>;
 }
 
 export const UploadPanel = (props: UploadPanelProps) => {
@@ -47,9 +46,6 @@ export const UploadPanel = (props: UploadPanelProps) => {
         </select>
       </label>
       <div className="actions">
-        <button type="button" onClick={() => void props.onLoadFieldTest()}>
-          Use Field Test Files
-        </button>
         <button type="button" onClick={() => clientInputRef.current?.click()}>
           Add More Client Files
         </button>

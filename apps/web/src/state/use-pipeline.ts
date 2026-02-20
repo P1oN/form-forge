@@ -6,6 +6,7 @@ import type { PipelineState } from '../types';
 import { fileToArrayBuffer } from '../utils/file';
 
 export type RecognitionEngine = 'tesseract' | 'gemini';
+const DEFAULT_GEMINI_CONFIDENCE_THRESHOLD = 0.4;
 
 const extractErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -15,6 +16,20 @@ const extractErrorMessage = (error: unknown): string => {
     return error.message;
   }
   return 'Unknown pipeline error';
+};
+
+const resolveGeminiConfidenceThreshold = (rawValue?: string): number => {
+  const value = rawValue?.trim();
+  if (!value) {
+    return DEFAULT_GEMINI_CONFIDENCE_THRESHOLD;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
+    throw new Error('VITE_GEMINI_CONFIDENCE_THRESHOLD must be a number between 0 and 1.');
+  }
+
+  return parsed;
 };
 
 export const usePipeline = () => {
@@ -38,12 +53,16 @@ export const usePipeline = () => {
 
         const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim();
         const geminiModel = import.meta.env.VITE_GEMINI_MODEL?.trim();
+        const geminiConfidenceThreshold = resolveGeminiConfidenceThreshold(
+          import.meta.env.VITE_GEMINI_CONFIDENCE_THRESHOLD,
+        );
 
         const llm =
           engine === 'gemini'
             ? new GeminiVisionProvider({
                 apiKey: geminiApiKey || '',
                 logger: console,
+                confidenceThreshold: geminiConfidenceThreshold,
                 ...(geminiModel ? { model: geminiModel } : {}),
               })
             : undefined;
