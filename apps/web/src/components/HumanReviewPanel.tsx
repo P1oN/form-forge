@@ -1,4 +1,4 @@
-import type { FillPlan, TemplateField } from '@form-forge/core';
+import type { BBoxOrigin, FillPlan, TemplateField } from '@form-forge/core';
 import { useEffect, useMemo, useState } from 'react';
 
 import { PreviewGrid } from './PreviewGrid';
@@ -21,6 +21,21 @@ const toDisplayLabel = (fieldId: string, targetPdfFieldName?: string): string =>
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+};
+
+export const resolvePreviewBBoxOrigin = (
+  previewFocusedEntry: FillPlan['entries'][number] | undefined,
+  previewFocusedTemplateField: TemplateField | undefined,
+  selectedEntry: FillPlan['entries'][number] | undefined,
+  selectedTemplateField: TemplateField | undefined,
+): BBoxOrigin => {
+  return (
+    previewFocusedEntry?.source.bboxOrigin ??
+    previewFocusedTemplateField?.bboxOrigin ??
+    selectedEntry?.source.bboxOrigin ??
+    selectedTemplateField?.bboxOrigin ??
+    'top_left'
+  );
 };
 
 export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanReviewPanelProps) => {
@@ -100,11 +115,12 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
     selectedEntry?.source.pageIndex ??
     selectedTemplateField?.pageIndex ??
     0;
-  const previewSourceHint =
-    previewFocusedEntry?.source.sourceHint ??
-    (previewFocusedTemplateField ? 'template_field' : undefined) ??
-    selectedEntry?.source.sourceHint ??
-    (selectedTemplateField ? 'template_field' : undefined);
+  const previewBboxOrigin = resolvePreviewBBoxOrigin(
+    previewFocusedEntry,
+    previewFocusedTemplateField,
+    selectedEntry,
+    selectedTemplateField,
+  );
   const previewStrokeColor = previewFocusedEntry ? '#1d4ed8' : '#c9382b';
   const itemsToRender = viewMode === 'all' ? unresolvedEntries : activeItem ? [activeItem] : [];
 
@@ -206,8 +222,8 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
       <SourcePreview
         sourceFile={sourceFile}
         bbox={previewBbox}
+        bboxOrigin={previewBboxOrigin}
         pageIndex={previewPageIndex}
-        sourceHint={previewSourceHint}
         strokeColor={previewStrokeColor}
       />
       <PreviewGrid entries={result.fillPlan.entries} onFocusedFieldIdChange={setPreviewFocusedFieldId} />

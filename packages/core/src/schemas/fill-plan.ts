@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { fieldTypeSchema, relativeBBoxSchema } from './common';
+import { bboxOriginSchema, fieldTypeSchema, relativeBBoxSchema } from './common';
 
 export const fillPlanEntrySchema = z
   .object({
@@ -12,6 +12,7 @@ export const fillPlanEntrySchema = z
       .object({
         pageIndex: z.number().int().min(0),
         bbox: relativeBBoxSchema.optional(),
+        bboxOrigin: bboxOriginSchema.optional(),
         sourceHint: z.string().min(1),
       })
       .strict(),

@@ -1,4 +1,4 @@
-import type { ConstraintSpec, FieldType, RelativeBBox } from './common';
+import type { BBoxOrigin, ConstraintSpec, FieldType, RelativeBBox } from './common';
 
 export interface TemplateField {
   fieldId: string;
@@ -8,6 +8,7 @@ export interface TemplateField {
   constraints?: ConstraintSpec | undefined;
   pageIndex: number;
   bbox: RelativeBBox;
+  bboxOrigin?: BBoxOrigin | undefined;
   pdfFieldName?: string | undefined;
 }
 
@@ -28,5 +29,6 @@ export interface TemplateRegionConfig {
     constraints?: ConstraintSpec | undefined;
     pageIndex: number;
     bbox: RelativeBBox;
+    bboxOrigin?: BBoxOrigin | undefined;
   }>;
 }

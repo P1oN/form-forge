@@ -30,6 +30,7 @@ const normalizeFromPdf = (
   return {
     text: item.str,
     bbox: [x / pageWidth, Math.max(0, (y - h) / pageHeight), w / pageWidth, h / pageHeight],
+    bboxOrigin: 'top_left',
     confidence: 1,
     sourceHint: 'pdf_text',
   };

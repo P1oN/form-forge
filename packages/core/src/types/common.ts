@@ -1,4 +1,5 @@
 export type RelativeBBox = [number, number, number, number];
+export type BBoxOrigin = 'top_left' | 'bottom_left';
 
 export type FieldType =
   | 'text'
@@ -24,6 +25,7 @@ export interface ConstraintSpec {
 export interface SourceRef {
   pageIndex: number;
   bbox?: RelativeBBox | undefined;
+  bboxOrigin?: BBoxOrigin | undefined;
   sourceHint: string;
 }
 

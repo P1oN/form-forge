@@ -19,6 +19,7 @@ export { OpenAiCompatibleProvider } from './llm/openai-compatible-provider';
 export { defaultPipelineConfig, resolvePipelineConfig } from './pipeline/config';
 export * from './schemas';
 export type {
+  BBoxOrigin,
   ConstraintSpec,
   FieldType,
   Logger,

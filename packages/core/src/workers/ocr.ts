@@ -43,6 +43,7 @@ export class BrowserTesseractOcrEngine implements OcrEngine {
         (word.bbox.x1 - word.bbox.x0) / width,
         (word.bbox.y1 - word.bbox.y0) / height,
       ],
+      bboxOrigin: 'top_left' as const,
       confidence: Math.max(0, Math.min(1, word.confidence / 100)),
       sourceHint: 'ocr' as const,
     }));

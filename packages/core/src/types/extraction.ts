@@ -1,8 +1,9 @@
-import type { RelativeBBox } from './common';
+import type { BBoxOrigin, RelativeBBox } from './common';
 
 export interface ExtractedBlock {
   text: string;
   bbox: RelativeBBox;
+  bboxOrigin: BBoxOrigin;
   confidence: number;
   sourceHint: 'pdf_text' | 'ocr' | 'manual';
 }

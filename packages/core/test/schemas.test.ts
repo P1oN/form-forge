@@ -27,7 +27,15 @@ describe('schemas', () => {
         pages: [
           {
             pageIndex: 0,
-            blocks: [{ text: 'x', bbox: [2, 0, 0, 0], confidence: 0.9, sourceHint: 'ocr' }],
+            blocks: [
+              {
+                text: 'x',
+                bbox: [2, 0, 0, 0],
+                bboxOrigin: 'top_left',
+                confidence: 0.9,
+                sourceHint: 'ocr',
+              },
+            ],
           },
         ],
         createdAt: new Date().toISOString(),

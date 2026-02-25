@@ -260,6 +260,7 @@ export class GeminiVisionProvider implements LLMProvider {
         source: {
           pageIndex: field.pageIndex,
           bbox: field.bbox,
+          bboxOrigin: field.bboxOrigin ?? 'bottom_left',
           sourceHint: 'gemini_vlm',
         },
         targetPdfFieldName: field.pdfFieldName,

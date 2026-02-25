@@ -151,3 +151,16 @@ Note: field-test loader uses Vite dev `@fs` path access and is intended for loca
 - Deterministic mapping is prioritized for repeatability.
 - Flat templates are reliable when `TemplateRegionConfig` is provided.
 - OCR quality varies by scan quality and handwriting legibility.
+
+## BBox coordinate contract
+
+- All bboxes are relative coordinates in `[0..1]`.
+- `bbox` is `[x, y, width, height]`.
+- `bboxOrigin` defines how `y` is interpreted:
+  - `top_left`: `y` grows downward.
+  - `bottom_left`: `y` grows upward.
+- Defaults:
+  - Extracted OCR/PDF text blocks use `top_left`.
+  - AcroForm template widget bboxes use `bottom_left`.
+  - Flat template region config defaults to `top_left` when omitted.
+- Web preview uses `bboxOrigin` explicitly; it does not infer geometry from `sourceHint`.

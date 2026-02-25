@@ -8,6 +8,7 @@ import {
   PDFTextField,
   ParseSpeeds,
   type PDFField,
+  type PDFPage,
 } from 'pdf-lib';
 
 import { PdfParseError } from '../errors';
@@ -55,6 +56,73 @@ const inferTypeFromField = (field: PDFField) => {
   return inferTypeFromName(field.getName());
 };
 
+const toRefKey = (value: unknown): string | undefined => {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+
+  if (!('toString' in value)) {
+    return undefined;
+  }
+
+  const toString = (value as { toString?: unknown }).toString;
+  if (typeof toString !== 'function') {
+    return undefined;
+  }
+
+  return toString.call(value);
+};
+
+const buildAnnotationPageIndexMap = (pages: PDFPage[]): Map<string, number> => {
+  const byAnnotationRef = new Map<string, number>();
+
+  pages.forEach((page, pageIndex) => {
+    const annots = (page.node as unknown as { Annots?: () => unknown }).Annots?.();
+    const asArray = (annots as { asArray?: () => unknown[] } | undefined)?.asArray;
+    const refs = typeof asArray === 'function' ? asArray.call(annots) : [];
+
+    refs.forEach((ref) => {
+      const key = toRefKey(ref);
+      if (key) {
+        byAnnotationRef.set(key, pageIndex);
+      }
+    });
+  });
+
+  return byAnnotationRef;
+};
+
+const buildPageRefIndexMap = (pages: PDFPage[]): Map<string, number> => {
+  const byPageRef = new Map<string, number>();
+  pages.forEach((page, pageIndex) => {
+    const key = toRefKey((page as unknown as { ref?: unknown }).ref);
+    if (key) {
+      byPageRef.set(key, pageIndex);
+    }
+  });
+  return byPageRef;
+};
+
+const getWidgetPageIndex = (
+  widget: unknown,
+  byAnnotationRef: Map<string, number>,
+  byPageRef: Map<string, number>,
+): number => {
+  const widgetPageRef = (widget as { P?: () => unknown } | undefined)?.P?.();
+  const widgetPageKey = widgetPageRef ? toRefKey(widgetPageRef) : undefined;
+  if (widgetPageKey) {
+    return byPageRef.get(widgetPageKey) ?? 0;
+  }
+
+  const ref = (widget as { ref?: unknown } | undefined)?.ref;
+  const key = ref ? toRefKey(ref) : undefined;
+  if (!key) {
+    return 0;
+  }
+
+  return byAnnotationRef.get(key) ?? 0;
+};
+
 const loadTemplatePdf = async (templatePdf: ArrayBuffer): Promise<PDFDocument> => {
   const bytes = new Uint8Array(normalizePdfArrayBuffer(templatePdf));
 
@@ -84,6 +152,8 @@ export const analyzeTemplate = async (
     const pdf = await loadTemplatePdf(templatePdf);
     const pageCount = pdf.getPageCount();
     const pages = pdf.getPages();
+    const annotationPageIndex = buildAnnotationPageIndexMap(pages);
+    const pageRefIndex = buildPageRefIndexMap(pages);
 
     let fields: PDFField[] = [];
     try {
@@ -96,7 +166,7 @@ export const analyzeTemplate = async (
       const mapped = fields.map((field, idx) => {
         const widget = field.acroField.getWidgets()[0];
         const rect = widget?.getRectangle() ?? { x: 0, y: 0, width: 0.2, height: 0.03 };
-        const pageIndex = 0;
+        const pageIndex = getWidgetPageIndex(widget, annotationPageIndex, pageRefIndex);
         const page = pages[pageIndex];
         const size = page?.getSize() ?? { width: 1, height: 1 };
 
@@ -107,6 +177,7 @@ export const analyzeTemplate = async (
           required: false,
           pageIndex,
           bbox: normalizeBBox(rect.x, rect.y, rect.width, rect.height, size.width, size.height),
+          bboxOrigin: 'bottom_left' as const,
           pdfFieldName: field.getName(),
         };
       });
@@ -119,7 +190,10 @@ export const analyzeTemplate = async (
       });
     }
 
-    const flatFields = regionConfig?.fields ?? [];
+    const flatFields = (regionConfig?.fields ?? []).map((field) => ({
+      ...field,
+      bboxOrigin: field.bboxOrigin ?? 'top_left',
+    }));
 
     return templateInventorySchema.parse({
       templateType: 'flat',

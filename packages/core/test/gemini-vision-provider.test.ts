@@ -44,6 +44,9 @@ describe('GeminiVisionProvider', () => {
     expect(result.fillPlan.entries.find((entry) => entry.fieldId === 'name')?.value).toBe(
       'Ada Lovelace',
     );
+    expect(result.fillPlan.entries.find((entry) => entry.fieldId === 'agree')?.source.bboxOrigin).toBe(
+      'bottom_left',
+    );
   });
 
   it('retries on HTTP 429 and succeeds on subsequent attempt', async () => {

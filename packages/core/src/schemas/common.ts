@@ -13,6 +13,8 @@ export const relativeBBoxSchema = z
     });
   });
 
+export const bboxOriginSchema = z.enum(['top_left', 'bottom_left']);
+
 export const fieldTypeSchema = z.enum([
   'text',
   'multiline',

@@ -98,6 +98,7 @@ export const deterministicMap = (
       source: {
         pageIndex: field.pageIndex,
         bbox: candidate.block.bbox,
+        bboxOrigin: candidate.block.bboxOrigin,
         sourceHint: candidate.block.sourceHint,
       },
       targetPdfFieldName: field.pdfFieldName,

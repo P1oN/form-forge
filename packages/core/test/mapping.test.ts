@@ -27,6 +27,7 @@ describe('deterministicMap', () => {
               {
                 text: 'EMAIL ADDRESS: USER@EXAMPLE.COM',
                 bbox: [0.12, 0.11, 0.35, 0.08],
+                bboxOrigin: 'top_left',
                 confidence: 0.98,
                 sourceHint: 'ocr',
               },
@@ -40,6 +41,7 @@ describe('deterministicMap', () => {
     );
 
     expect(result.entries[0]?.value).toContain('user@example.com');
+    expect(result.entries[0]?.source.bboxOrigin).toBe('top_left');
     expect(result.unresolved).toHaveLength(0);
   });
 
@@ -67,6 +69,7 @@ describe('deterministicMap', () => {
               {
                 text: '01/02/2024',
                 bbox: [0.12, 0.11, 0.35, 0.08],
+                bboxOrigin: 'top_left',
                 confidence: 0.9,
                 sourceHint: 'ocr',
               },

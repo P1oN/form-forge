@@ -29,6 +29,21 @@ class ThrowingOcrEngine implements OcrEngine {
   }
 }
 
+class TopLeftOcrEngine implements OcrEngine {
+  public async run(input: OcrInput): Promise<ExtractedBlock[]> {
+    void input;
+    return [
+      {
+        text: 'Ada',
+        bbox: [0.1, 0.2, 0.3, 0.1],
+        bboxOrigin: 'top_left',
+        confidence: 0.9,
+        sourceHint: 'ocr',
+      },
+    ];
+  }
+}
+
 describe('extractClientData', () => {
   it('continues when OCR fails for scanned PDF', async () => {
     const pdf = await createBlankPdf();
@@ -43,5 +58,17 @@ describe('extractClientData', () => {
 
     expect(extracted.pages.length).toBe(1);
     expect(extracted.pages[0]?.blocks ?? []).toEqual([]);
+  });
+
+  it('preserves top-left bbox origin for OCR image blocks', async () => {
+    const extracted = await extractClientData(
+      [{ name: 'scan.png', data: new Uint8Array([1, 2, 3]).buffer, mime: 'image/png' }],
+      {
+        config: makeConfig(),
+        ocrEngine: new TopLeftOcrEngine(),
+      },
+    );
+
+    expect(extracted.pages[0]?.blocks[0]?.bboxOrigin).toBe('top_left');
   });
 });

@@ -1,3 +1,4 @@
+import type { BBoxOrigin } from '@form-forge/core';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import { useEffect, useRef } from 'react';
 
@@ -6,25 +7,29 @@ GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.
 interface SourcePreviewProps {
   sourceFile?: File | undefined;
   bbox?: [number, number, number, number] | undefined;
+  bboxOrigin?: BBoxOrigin | undefined;
   pageIndex?: number | undefined;
-  sourceHint?: string | undefined;
   strokeColor?: string;
 }
+
+export const computePreviewDrawY = (
+  y: number,
+  h: number,
+  bboxOrigin: BBoxOrigin | undefined,
+): number => (bboxOrigin === 'bottom_left' ? 1 - y - h : y);
 
 const drawBbox = (
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   bbox?: [number, number, number, number] | undefined,
-  sourceHint?: string,
+  bboxOrigin?: BBoxOrigin,
   strokeColor = '#c9382b',
 ): void => {
   if (!bbox) {
     return;
   }
   const [x, y, w, h] = bbox;
-  const isBottomLeftOrigin =
-    sourceHint === 'pdf_text' || sourceHint === 'gemini_vlm' || sourceHint === 'template_field';
-  const drawY = isBottomLeftOrigin ? 1 - y - h : y;
+  const drawY = computePreviewDrawY(y, h, bboxOrigin);
 
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 2;
@@ -34,8 +39,8 @@ const drawBbox = (
 export const SourcePreview = ({
   sourceFile,
   bbox,
+  bboxOrigin,
   pageIndex = 0,
-  sourceHint,
   strokeColor = '#c9382b',
 }: SourcePreviewProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,7 +96,7 @@ export const SourcePreview = ({
           return;
         }
 
-        drawBbox(ctx, canvas, bbox, sourceHint, strokeColor);
+        drawBbox(ctx, canvas, bbox, bboxOrigin, strokeColor);
         await loadingTask.destroy();
         return;
       }
@@ -109,7 +114,7 @@ export const SourcePreview = ({
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(image, 0, 0);
-        drawBbox(ctx, canvas, bbox, sourceHint, strokeColor);
+        drawBbox(ctx, canvas, bbox, bboxOrigin, strokeColor);
         URL.revokeObjectURL(url);
         objectUrl = null;
       };
@@ -141,7 +146,7 @@ export const SourcePreview = ({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [sourceFile, bbox, pageIndex, sourceHint, strokeColor]);
+  }, [sourceFile, bbox, bboxOrigin, pageIndex, strokeColor]);
 
   return <canvas ref={canvasRef} className="source-canvas" />;
 };

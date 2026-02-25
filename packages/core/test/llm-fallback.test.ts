@@ -34,8 +34,20 @@ describe('LLM fallback', () => {
           {
             pageIndex: 0,
             blocks: [
-              { text: 'Ada Lovelace', bbox: [0.1, 0.1, 0.2, 0.05], confidence: 0.95, sourceHint: 'ocr' },
-              { text: 'N/A', bbox: [0.1, 0.2, 0.2, 0.05], confidence: 0.8, sourceHint: 'ocr' },
+              {
+                text: 'Ada Lovelace',
+                bbox: [0.1, 0.1, 0.2, 0.05],
+                bboxOrigin: 'top_left',
+                confidence: 0.95,
+                sourceHint: 'ocr',
+              },
+              {
+                text: 'N/A',
+                bbox: [0.1, 0.2, 0.2, 0.05],
+                bboxOrigin: 'top_left',
+                confidence: 0.8,
+                sourceHint: 'ocr',
+              },
             ],
           },
         ],
@@ -86,7 +98,15 @@ describe('LLM fallback error handling', () => {
         pages: [
           {
             pageIndex: 0,
-            blocks: [{ text: 'N/A', bbox: [0.1, 0.2, 0.2, 0.05], confidence: 0.8, sourceHint: 'ocr' }],
+            blocks: [
+              {
+                text: 'N/A',
+                bbox: [0.1, 0.2, 0.2, 0.05],
+                bboxOrigin: 'top_left',
+                confidence: 0.8,
+                sourceHint: 'ocr',
+              },
+            ],
           },
         ],
         createdAt: new Date().toISOString(),

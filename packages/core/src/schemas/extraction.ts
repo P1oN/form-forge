@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
-import { relativeBBoxSchema } from './common';
+import { bboxOriginSchema, relativeBBoxSchema } from './common';
 
 export const extractedBlockSchema = z
   .object({
     text: z.string(),
     bbox: relativeBBoxSchema,
+    bboxOrigin: bboxOriginSchema,
     confidence: z.number().min(0).max(1),
     sourceHint: z.enum(['pdf_text', 'ocr', 'manual']),
   })

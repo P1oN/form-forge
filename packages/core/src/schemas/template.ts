@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { constraintSchema, fieldTypeSchema, relativeBBoxSchema } from './common';
+import { bboxOriginSchema, constraintSchema, fieldTypeSchema, relativeBBoxSchema } from './common';
 
 export const templateFieldSchema = z
   .object({
@@ -11,6 +11,7 @@ export const templateFieldSchema = z
     constraints: constraintSchema.optional(),
     pageIndex: z.number().int().min(0),
     bbox: relativeBBoxSchema,
+    bboxOrigin: bboxOriginSchema.optional(),
     pdfFieldName: z.string().optional(),
   })
   .strict();
