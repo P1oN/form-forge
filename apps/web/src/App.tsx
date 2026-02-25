@@ -12,24 +12,24 @@ type PipelineView = 'setup' | 'progress' | 'review' | 'fin';
 
 export const App = () => {
   const [templateFile, setTemplateFile] = useState<File>();
-  const [clientFiles, setClientFiles] = useState<File[]>([]);
+  const [clientFile, setClientFile] = useState<File>([]);
   const [recognitionEngine, setRecognitionEngine] = useState<RecognitionEngine>('gemini');
   const [view, setView] = useState<PipelineView>('setup');
   const [runRequested, setRunRequested] = useState(false);
   const { run, rerunFillOnly, reset, state } = usePipeline();
 
-  const canRun = Boolean(templateFile) && clientFiles.length > 0 && !state.running;
+  const canRun = Boolean(templateFile) && Boolean(clientFile) && !state.running;
   const hasResult = Boolean(state.result);
   const hasUnresolved = (state.result?.fillPlan.unresolved.length ?? 0) > 0;
   const isRunning = state.running;
 
   const runPipeline = async () => {
-    if (!templateFile || clientFiles.length === 0 || !canRun) {
+    if (!templateFile || !clientFile || !canRun) {
       return;
     }
     setView('progress');
     setRunRequested(true);
-    await run(templateFile, clientFiles, recognitionEngine);
+    await run(templateFile, [clientFile], recognitionEngine);
   };
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export const App = () => {
 
     reset();
     setTemplateFile(undefined);
-    setClientFiles([]);
+    setClientFile(undefined);
     setRecognitionEngine('gemini');
     setRunRequested(false);
     setView('setup');
@@ -74,13 +74,13 @@ export const App = () => {
         <section className="view-shell">
           <UploadPanel
             templateFile={templateFile}
-            clientFiles={clientFiles}
+            clientFile={clientFile}
             recognitionEngine={recognitionEngine}
             onTemplateSelect={setTemplateFile}
-            onClientSelect={setClientFiles}
+            onClientSelect={setClientFile}
             onRecognitionEngineChange={setRecognitionEngine}
           />
-          <section className="card">
+          <section className="controls">
             <button type="button" disabled={!canRun} onClick={() => void runPipeline()}>
               Run Pipeline
             </button>
@@ -99,21 +99,14 @@ export const App = () => {
                 <span>{templateFile?.name ?? 'Not selected'}</span>
               </div>
               <div className="context-row">
+                <span className="context-label">Client File</span>
+                <span>{clientFile?.name ?? 'Not selected'}</span>
+              </div>
+              <div className="context-row">
                 <span className="context-label">Engine</span>
                 <span>{contextLabel}</span>
               </div>
-              <div className="context-row">
-                <span className="context-label">Client Files</span>
-                <span>{clientFiles.length}</span>
-              </div>
             </div>
-            {clientFiles.length > 0 ? (
-              <ul className="context-file-list">
-                {clientFiles.map((file, index) => (
-                  <li key={`${file.name}-${index}`}>{file.name}</li>
-                ))}
-              </ul>
-            ) : null}
           </section>
           <ProgressPanel running={state.running} progress={state.progress} />
         </section>
@@ -130,8 +123,8 @@ export const App = () => {
                   }
                 : undefined
             }
-            sourceFile={clientFiles[0]}
-            onApplyEdits={async (edits) => {
+            sourceFile={clientFile}
+            onApplyEdits={async (edits: Array<{ fieldId: string; value: string | boolean }>) => {
               if (!state.result || !templateFile) {
                 return;
               }

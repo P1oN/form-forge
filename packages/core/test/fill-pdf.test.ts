@@ -12,6 +12,15 @@ const createAcroPdf = async (): Promise<ArrayBuffer> => {
   return doc.save();
 };
 
+const createAcroPdfWithCheckbox = async (): Promise<ArrayBuffer> => {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([600, 800]);
+  const form = doc.getForm();
+  const checkbox = form.createCheckBox('agree_terms');
+  checkbox.addToPage(page, { x: 100, y: 700, width: 18, height: 18 });
+  return doc.save();
+};
+
 const withLeadingBytes = (pdf: ArrayBuffer, count = 552): ArrayBuffer => {
   const src = new Uint8Array(pdf);
   const dst = new Uint8Array(count + src.byteLength);
@@ -85,5 +94,71 @@ describe('fillPdf', () => {
 
     const loaded = await PDFDocument.load(filled);
     expect(loaded.getForm().getTextField('full_name').getText()).toBe('Grace Hopper');
+  });
+
+  it('checks acroform checkbox when value is boolean true', async () => {
+    const pdf = await createAcroPdfWithCheckbox();
+
+    const filled = await fillPdf(pdf, {
+      entries: [
+        {
+          fieldId: 'agree_terms',
+          fieldType: 'checkbox',
+          value: true,
+          confidence: 1,
+          source: { pageIndex: 0, sourceHint: 'manual' },
+          targetPdfFieldName: 'agree_terms',
+        },
+      ],
+      unresolved: [],
+      createdAt: new Date().toISOString(),
+    });
+
+    const loaded = await PDFDocument.load(filled);
+    expect(loaded.getForm().getCheckBox('agree_terms').isChecked()).toBe(true);
+  });
+
+  it('checks acroform checkbox when value is coercible string', async () => {
+    const pdf = await createAcroPdfWithCheckbox();
+
+    const filled = await fillPdf(pdf, {
+      entries: [
+        {
+          fieldId: 'agree_terms',
+          fieldType: 'checkbox',
+          value: 'yes',
+          confidence: 1,
+          source: { pageIndex: 0, sourceHint: 'manual' },
+          targetPdfFieldName: 'agree_terms',
+        },
+      ],
+      unresolved: [],
+      createdAt: new Date().toISOString(),
+    });
+
+    const loaded = await PDFDocument.load(filled);
+    expect(loaded.getForm().getCheckBox('agree_terms').isChecked()).toBe(true);
+  });
+
+  it('unchecks acroform checkbox when value is unrecognized text', async () => {
+    const pdf = await createAcroPdfWithCheckbox();
+
+    const filled = await fillPdf(pdf, {
+      entries: [
+        {
+          fieldId: 'agree_terms',
+          fieldType: 'checkbox',
+          value: 'maybe',
+          confidence: 1,
+          source: { pageIndex: 0, sourceHint: 'manual' },
+          targetPdfFieldName: 'agree_terms',
+        },
+      ],
+      unresolved: [],
+      createdAt: new Date().toISOString(),
+    });
+
+    const loaded = await PDFDocument.load(filled);
+    expect(loaded.getForm().getCheckBox('agree_terms').isChecked()).toBe(false);
   });
 });

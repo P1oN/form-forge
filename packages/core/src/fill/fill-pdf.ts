@@ -6,6 +6,24 @@ import { fillPlanSchema } from '../schemas';
 import type { FillPlan } from '../types/fill-plan';
 import { normalizePdfArrayBuffer } from '../utils/pdf-bytes';
 
+const TRUE_CHECKBOX_TOKENS = new Set(['true', 'yes', 'checked', 'on', '1', 'x', '✓', '☑']);
+const FALSE_CHECKBOX_TOKENS = new Set(['false', 'no', 'unchecked', 'off', '0', '']);
+
+const coerceCheckboxValue = (value: string | boolean): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (TRUE_CHECKBOX_TOKENS.has(normalized)) {
+    return true;
+  }
+  if (FALSE_CHECKBOX_TOKENS.has(normalized)) {
+    return false;
+  }
+  return false;
+};
+
 const drawFlatEntry = (
   page: PDFPage,
   entry: FillPlan['entries'][number],
@@ -71,9 +89,9 @@ export const fillPdf = async (templatePdf: ArrayBuffer, fillPlan: FillPlan): Pro
             return;
           }
 
-          if (typeof entry.value === 'boolean') {
+          if (entry.fieldType === 'checkbox') {
             const maybeCheck = form.getCheckBox(entry.targetPdfFieldName);
-            if (entry.value) {
+            if (coerceCheckboxValue(entry.value)) {
               maybeCheck.check();
             } else {
               maybeCheck.uncheck();
@@ -82,11 +100,17 @@ export const fillPdf = async (templatePdf: ArrayBuffer, fillPlan: FillPlan): Pro
           }
 
           if (entry.fieldType === 'radio') {
+            if (typeof entry.value !== 'string') {
+              return;
+            }
             const radio = form.getRadioGroup(entry.targetPdfFieldName);
             radio.select(entry.value);
             return;
           }
 
+          if (typeof entry.value !== 'string') {
+            return;
+          }
           const text = form.getTextField(entry.targetPdfFieldName);
           text.setText(entry.value);
         } catch {

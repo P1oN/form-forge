@@ -12,8 +12,39 @@ interface HumanReviewPanelProps {
       }
     | undefined;
   sourceFile?: File | undefined;
-  onApplyEdits: (edits: Array<{ fieldId: string; value: string }>) => Promise<void>;
+  onApplyEdits: (edits: Array<{ fieldId: string; value: string | boolean }>) => Promise<void>;
 }
+
+export const resolveManualInputType = (
+  fieldId: string,
+  entryByFieldId: Map<string, FillPlan['entries'][number]>,
+  templateFieldById: Map<string, TemplateField>,
+): 'checkbox' | 'text' => {
+  const entryType = entryByFieldId.get(fieldId)?.fieldType;
+  if (entryType === 'checkbox') {
+    return 'checkbox';
+  }
+  const templateType = templateFieldById.get(fieldId)?.fieldType;
+  return templateType === 'checkbox' ? 'checkbox' : 'text';
+};
+
+export const buildManualEditsPayload = (args: {
+  edits: Record<string, string | boolean>;
+  entryByFieldId: Map<string, FillPlan['entries'][number]>;
+  templateFieldById: Map<string, TemplateField>;
+  presumableValueByFieldId: Record<string, string | boolean>;
+}): Array<{ fieldId: string; value: string | boolean }> => {
+  return Object.entries(args.edits).flatMap<{ fieldId: string; value: string | boolean }>(([fieldId, value]) => {
+    if (resolveManualInputType(fieldId, args.entryByFieldId, args.templateFieldById) === 'checkbox') {
+      const initialValue = Boolean(args.presumableValueByFieldId[fieldId]);
+      const currentValue = Boolean(value);
+      return currentValue !== initialValue ? [{ fieldId, value: currentValue }] : [];
+    }
+
+    const textValue = typeof value === 'string' ? value : String(value);
+    return textValue.trim().length > 0 ? [{ fieldId, value: textValue }] : [];
+  });
+};
 
 const toDisplayLabel = (fieldId: string, targetPdfFieldName?: string): string => {
   const raw = targetPdfFieldName ?? fieldId.replace(/^f_\d+_/, '');
@@ -42,7 +73,7 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
   const unresolved = result?.fillPlan.unresolved ?? [];
   const entries = result?.fillPlan.entries ?? [];
   const templateFields = result?.templateFields ?? [];
-  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [edits, setEdits] = useState<Record<string, string | boolean>>({});
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewFocusedFieldId, setPreviewFocusedFieldId] = useState<string | undefined>(undefined);
@@ -56,10 +87,10 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
     () => new Map(templateFields.map((field) => [field.fieldId, field])),
     [templateFields],
   );
-  const presumableValueByFieldId = useMemo<Record<string, string>>(
+  const presumableValueByFieldId = useMemo<Record<string, string | boolean>>(
     () =>
-      entries.reduce<Record<string, string>>((accumulator, entry) => {
-        accumulator[entry.fieldId] = String(entry.value);
+      entries.reduce<Record<string, string | boolean>>((accumulator, entry) => {
+        accumulator[entry.fieldId] = entry.value;
         return accumulator;
       }, {}),
     [entries],
@@ -76,7 +107,7 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
 
   useEffect(() => {
     setEdits((current) => {
-      const next: Record<string, string> = {};
+      const next: Record<string, string | boolean> = {};
 
       unresolvedEntries.forEach((item) => {
         if (Object.prototype.hasOwnProperty.call(current, item.fieldId)) {
@@ -196,11 +227,24 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
             <div>
               <label>
                 Manual value
-                <input
-                  type="text"
-                  value={edits[item.fieldId] ?? ''}
-                  onChange={(e) => setEdits((current) => ({ ...current, [item.fieldId]: e.target.value }))}
-                />
+                {resolveManualInputType(item.fieldId, entryByFieldId, templateFieldById) === 'checkbox' ? (
+                  <input
+                    type="checkbox"
+                    checked={Boolean(edits[item.fieldId])}
+                    onChange={(e) => setEdits((current) => ({ ...current, [item.fieldId]: e.target.checked }))}
+                  />
+                ) : (
+                  (() => {
+                    const editValue = edits[item.fieldId];
+                    return (
+                      <input
+                        type="text"
+                        value={typeof editValue === 'string' ? editValue : String(editValue ?? '')}
+                        onChange={(e) => setEdits((current) => ({ ...current, [item.fieldId]: e.target.value }))}
+                      />
+                    );
+                  })()
+                )}
               </label>
             </div>
           </div>
@@ -210,9 +254,12 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
         type="button"
         onClick={() =>
           void onApplyEdits(
-            Object.entries(edits)
-              .filter(([, value]) => value.trim().length > 0)
-              .map(([fieldId, value]) => ({ fieldId, value })),
+            buildManualEditsPayload({
+              edits,
+              entryByFieldId,
+              templateFieldById,
+              presumableValueByFieldId,
+            }),
           )
         }
       >
