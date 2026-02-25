@@ -1,4 +1,4 @@
-import type { FillPlan } from '@form-forge/core';
+import type { FillPlan, TemplateField } from '@form-forge/core';
 import { useEffect, useMemo, useState } from 'react';
 
 import { PreviewGrid } from './PreviewGrid';
@@ -8,21 +8,39 @@ interface HumanReviewPanelProps {
   result?:
     | {
         fillPlan: FillPlan;
+        templateFields?: TemplateField[] | undefined;
       }
     | undefined;
   sourceFile?: File | undefined;
   onApplyEdits: (edits: Array<{ fieldId: string; value: string }>) => Promise<void>;
 }
 
+const toDisplayLabel = (fieldId: string, targetPdfFieldName?: string): string => {
+  const raw = targetPdfFieldName ?? fieldId.replace(/^f_\d+_/, '');
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanReviewPanelProps) => {
   const unresolved = result?.fillPlan.unresolved ?? [];
   const entries = result?.fillPlan.entries ?? [];
+  const templateFields = result?.templateFields ?? [];
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewFocusedFieldId, setPreviewFocusedFieldId] = useState<string | undefined>(undefined);
 
   const unresolvedEntries = useMemo(() => unresolved, [unresolved]);
+  const entryByFieldId = useMemo(
+    () => new Map(entries.map((entry) => [entry.fieldId, entry])),
+    [entries],
+  );
+  const templateFieldById = useMemo(
+    () => new Map(templateFields.map((field) => [field.fieldId, field])),
+    [templateFields],
+  );
   const presumableValueByFieldId = useMemo<Record<string, string>>(
     () =>
       entries.reduce<Record<string, string>>((accumulator, entry) => {
@@ -67,9 +85,26 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
   const selectedFieldId = activeItem?.fieldId;
   const selectedEntry = entries.find((entry) => entry.fieldId === selectedFieldId);
   const previewFocusedEntry = entries.find((entry) => entry.fieldId === previewFocusedFieldId);
-  const previewBbox = previewFocusedEntry?.source.bbox ?? selectedEntry?.source.bbox;
-  const previewPageIndex = previewFocusedEntry?.source.pageIndex ?? selectedEntry?.source.pageIndex ?? 0;
-  const previewSourceHint = previewFocusedEntry?.source.sourceHint ?? selectedEntry?.source.sourceHint;
+  const selectedTemplateField = selectedFieldId ? templateFieldById.get(selectedFieldId) : undefined;
+  const previewFocusedTemplateField = previewFocusedFieldId
+    ? templateFieldById.get(previewFocusedFieldId)
+    : undefined;
+  const previewBbox =
+    previewFocusedEntry?.source.bbox ??
+    previewFocusedTemplateField?.bbox ??
+    selectedEntry?.source.bbox ??
+    selectedTemplateField?.bbox;
+  const previewPageIndex =
+    previewFocusedEntry?.source.pageIndex ??
+    previewFocusedTemplateField?.pageIndex ??
+    selectedEntry?.source.pageIndex ??
+    selectedTemplateField?.pageIndex ??
+    0;
+  const previewSourceHint =
+    previewFocusedEntry?.source.sourceHint ??
+    (previewFocusedTemplateField ? 'template_field' : undefined) ??
+    selectedEntry?.source.sourceHint ??
+    (selectedTemplateField ? 'template_field' : undefined);
   const previewStrokeColor = previewFocusedEntry ? '#1d4ed8' : '#c9382b';
   const itemsToRender = viewMode === 'all' ? unresolvedEntries : activeItem ? [activeItem] : [];
 
@@ -77,6 +112,7 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
     if (unresolvedEntries.length === 0) {
       return;
     }
+    setPreviewFocusedFieldId(undefined);
     setActiveIndex((current) => (current + 1) % unresolvedEntries.length);
   };
 
@@ -84,7 +120,16 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
     if (unresolvedEntries.length === 0) {
       return;
     }
+    setPreviewFocusedFieldId(undefined);
     setActiveIndex((current) => (current - 1 + unresolvedEntries.length) % unresolvedEntries.length);
+  };
+
+  const focusUnresolvedField = (fieldId: string) => {
+    setPreviewFocusedFieldId(undefined);
+    const index = unresolvedEntries.findIndex((item) => item.fieldId === fieldId);
+    if (index >= 0) {
+      setActiveIndex(index);
+    }
   };
 
   if (!result) {
@@ -115,9 +160,20 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
       ) : null}
       <div className={`review-list ${viewMode === 'all' ? 'review-list--scroll' : ''}`}>
         {itemsToRender.map((item) => (
-          <div className="review-row" key={item.fieldId}>
+          <div
+            className="review-row"
+            key={item.fieldId}
+            onMouseEnter={() => focusUnresolvedField(item.fieldId)}
+            onFocus={() => focusUnresolvedField(item.fieldId)}
+          >
             <div>
-              <strong>{item.fieldId}</strong>
+              <strong className="field-label">
+                {toDisplayLabel(
+                  item.fieldId,
+                  entryByFieldId.get(item.fieldId)?.targetPdfFieldName ?? templateFieldById.get(item.fieldId)?.labelText,
+                )}
+              </strong>
+              <div className="field-id-muted">{item.fieldId}</div>
               <div>{item.reason}</div>
               <div>Confidence: {item.confidence.toFixed(2)}</div>
             </div>

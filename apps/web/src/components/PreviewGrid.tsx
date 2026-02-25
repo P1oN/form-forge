@@ -7,10 +7,19 @@ interface PreviewGridProps {
   onFocusedFieldIdChange?: (fieldId: string | undefined) => void;
 }
 
+const toDisplayLabel = (fieldId: string, targetPdfFieldName?: string): string => {
+  const raw = targetPdfFieldName ?? fieldId.replace(/^f_\d+_/, '');
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export const PreviewGrid = ({ entries, pageSize = 8, onFocusedFieldIdChange }: PreviewGridProps) => {
   const [pageIndex, setPageIndex] = useState(0);
   const [pinnedFieldId, setPinnedFieldId] = useState<string | undefined>(undefined);
   const [hoveredFieldId, setHoveredFieldId] = useState<string | undefined>(undefined);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(entries.length / pageSize));
 
@@ -41,6 +50,11 @@ export const PreviewGrid = ({ entries, pageSize = 8, onFocusedFieldIdChange }: P
 
   return (
     <div>
+      <div className="preview-toolbar">
+        <button type="button" onClick={() => setShowDebugInfo((current) => !current)}>
+          {showDebugInfo ? 'Hide debug info' : 'Show debug info'}
+        </button>
+      </div>
       <div className="preview-grid">
         {pageEntries.map((entry) => (
           <button
@@ -51,9 +65,10 @@ export const PreviewGrid = ({ entries, pageSize = 8, onFocusedFieldIdChange }: P
             onMouseLeave={() => setHoveredFieldId(undefined)}
             onClick={() => setPinnedFieldId((current) => (current === entry.fieldId ? undefined : entry.fieldId))}
           >
-            <div>{entry.fieldId}</div>
-            <div>BBox: {entry.source.bbox ? entry.source.bbox.join(', ') : 'n/a'}</div>
-            <div>Source: {entry.source.sourceHint}</div>
+            <div className="field-label">{toDisplayLabel(entry.fieldId, entry.targetPdfFieldName)}</div>
+            <div className="field-id-muted">{entry.fieldId}</div>
+            {showDebugInfo ? <div>BBox: {entry.source.bbox ? entry.source.bbox.join(', ') : 'n/a'}</div> : null}
+            {showDebugInfo ? <div>Source: {entry.source.sourceHint}</div> : null}
             <div>Value: {String(entry.value)}</div>
           </button>
         ))}

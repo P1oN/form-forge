@@ -1,5 +1,3 @@
-import { useRef } from 'react';
-
 import type { RecognitionEngine } from '../state/use-pipeline';
 
 interface UploadPanelProps {
@@ -12,48 +10,46 @@ interface UploadPanelProps {
 }
 
 export const UploadPanel = (props: UploadPanelProps) => {
-  const clientInputRef = useRef<HTMLInputElement>(null);
-
   return (
-    <section className="card">
+    <section className="card upload-panel">
       <h2>Upload Documents</h2>
-      <label>
-        Blank Template PDF
+      <label className="form-control">
+        <span className="form-control-label">Blank Template PDF</span>
         <input
+          className="file-input"
           type="file"
           accept="application/pdf"
           onChange={(e) => props.onTemplateSelect(e.target.files?.[0])}
         />
+        <span className="form-control-hint">Upload a blank AcroForm or flat template PDF.</span>
+        <span className="file-selection">{props.templateFile?.name ?? 'No template selected'}</span>
       </label>
-      <label>
-        Client Completed Docs (PDF, JPG, PNG)
+      <label className="form-control">
+        <span className="form-control-label">Client Completed Docs (PDF, JPG, PNG)</span>
         <input
-          ref={clientInputRef}
+          className="file-input"
           type="file"
           accept="application/pdf,image/png,image/jpeg"
           multiple
           onChange={(e) => props.onClientSelect(Array.from(e.target.files ?? []))}
         />
+        <span className="form-control-hint">You can select one or many files at once.</span>
+        <span className="file-selection">
+          {props.clientFiles.length > 0 ? `${props.clientFiles.length} file(s) selected` : 'No client files selected'}
+        </span>
       </label>
-      <label>
-        Recognition Engine
+      <label className="form-control">
+        <span className="form-control-label">Recognition Engine</span>
         <select
+          className="select-input"
           value={props.recognitionEngine}
           onChange={(e) => props.onRecognitionEngineChange(e.target.value as RecognitionEngine)}
         >
           <option value="gemini">Gemini</option>
           <option value="tesseract">Tesseract</option>
         </select>
+        <span className="form-control-hint">Gemini usually resolves more handwritten fields; Tesseract is local OCR.</span>
       </label>
-      <div className="actions">
-        <button type="button" onClick={() => clientInputRef.current?.click()}>
-          Add More Client Files
-        </button>
-      </div>
-      <ul>
-        <li>Template: {props.templateFile?.name ?? 'None selected'}</li>
-        <li>Client files: {props.clientFiles.length}</li>
-      </ul>
     </section>
   );
 };

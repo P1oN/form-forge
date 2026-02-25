@@ -1,4 +1,5 @@
 import type { FillPlan, ValidationReport } from '@form-forge/core';
+import { useState } from 'react';
 
 import { downloadBlob, jsonBlob } from '../utils/file';
 
@@ -11,6 +12,8 @@ interface ResultsPanelProps {
         report: ValidationReport;
       }
     | undefined;
+  title?: string | undefined;
+  showContainer?: boolean | undefined;
 }
 
 const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
@@ -19,15 +22,17 @@ const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
   return copy.buffer;
 };
 
-export const ResultsPanel = ({ result }: ResultsPanelProps) => {
+export const ResultsPanel = ({ result, title = 'Results', showContainer = true }: ResultsPanelProps) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   if (!result) {
     return null;
   }
 
-  return (
-    <section className="card">
-      <h2>Results</h2>
-      <div className="actions">
+  const content = (
+    <>
+      <h2>{title}</h2>
+      <div className="actions results-actions">
         <button
           type="button"
           onClick={() =>
@@ -36,16 +41,37 @@ export const ResultsPanel = ({ result }: ResultsPanelProps) => {
         >
           Download PDF
         </button>
-        <button type="button" onClick={() => downloadBlob('result.csv', new Blob([result.csv], { type: 'text/csv' }))}>
-          Download CSV
-        </button>
-        <button type="button" onClick={() => downloadBlob('fill_plan.json', jsonBlob(result.fillPlan))}>
-          Download Fill Plan
-        </button>
-        <button type="button" onClick={() => downloadBlob('validation_report.json', jsonBlob(result.report))}>
-          Download Validation Report
-        </button>
+        <div className="advanced-downloads">
+          <button
+            type="button"
+            className="advanced-toggle"
+            aria-expanded={showAdvanced}
+            aria-label="Toggle advanced downloads"
+            onClick={() => setShowAdvanced((current) => !current)}
+          >
+            •••
+          </button>
+          {showAdvanced ? (
+            <div className="advanced-downloads-menu">
+              <button type="button" onClick={() => downloadBlob('result.csv', new Blob([result.csv], { type: 'text/csv' }))}>
+                Download CSV
+              </button>
+              <button type="button" onClick={() => downloadBlob('fill_plan.json', jsonBlob(result.fillPlan))}>
+                Download Fill Plan
+              </button>
+              <button type="button" onClick={() => downloadBlob('validation_report.json', jsonBlob(result.report))}>
+                Download Validation Report
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
-    </section>
+    </>
   );
+
+  if (!showContainer) {
+    return content;
+  }
+
+  return <section className="card">{content}</section>;
 };

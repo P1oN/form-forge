@@ -1,4 +1,14 @@
-import { PDFDocument, ParseSpeeds, type PDFField } from 'pdf-lib';
+import {
+  PDFCheckBox,
+  PDFDocument,
+  PDFDropdown,
+  PDFOptionList,
+  PDFRadioGroup,
+  PDFSignature,
+  PDFTextField,
+  ParseSpeeds,
+  type PDFField,
+} from 'pdf-lib';
 
 import { PdfParseError } from '../errors';
 import { templateInventorySchema, templateRegionConfigSchema } from '../schemas';
@@ -24,6 +34,25 @@ const inferTypeFromName = (name: string) => {
   if (lower.includes('initial')) return 'initials' as const;
   if (lower.includes('check') || lower.includes('tick')) return 'checkbox' as const;
   return 'text' as const;
+};
+
+const inferTypeFromField = (field: PDFField) => {
+  if (field instanceof PDFCheckBox) {
+    return 'checkbox' as const;
+  }
+  if (field instanceof PDFRadioGroup) {
+    return 'radio' as const;
+  }
+  if (field instanceof PDFSignature) {
+    return 'signature' as const;
+  }
+  if (field instanceof PDFDropdown || field instanceof PDFOptionList) {
+    return 'text' as const;
+  }
+  if (field instanceof PDFTextField) {
+    return inferTypeFromName(field.getName());
+  }
+  return inferTypeFromName(field.getName());
 };
 
 const loadTemplatePdf = async (templatePdf: ArrayBuffer): Promise<PDFDocument> => {
@@ -74,7 +103,7 @@ export const analyzeTemplate = async (
         return {
           fieldId: `f_${idx}_${field.getName()}`,
           labelText: field.getName(),
-          fieldType: inferTypeFromName(field.getName()),
+          fieldType: inferTypeFromField(field),
           required: false,
           pageIndex,
           bbox: normalizeBBox(rect.x, rect.y, rect.width, rect.height, size.width, size.height),

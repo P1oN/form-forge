@@ -1,4 +1,4 @@
-import type { FillPlan, PipelineProgressEvent, ValidationReport } from '@form-forge/core';
+import type { FillPlan, PipelineProgressEvent, TemplateInventory, ValidationReport } from '@form-forge/core';
 
 export interface UploadState {
   templateFile?: File | undefined;
@@ -15,6 +15,7 @@ export interface PipelineState {
         csv: string;
         fillPlan: FillPlan;
         report: ValidationReport;
+        template: TemplateInventory;
       }
     | undefined;
 }

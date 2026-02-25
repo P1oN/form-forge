@@ -22,7 +22,8 @@ const drawBbox = (
     return;
   }
   const [x, y, w, h] = bbox;
-  const isBottomLeftOrigin = sourceHint === 'pdf_text' || sourceHint === 'gemini_vlm';
+  const isBottomLeftOrigin =
+    sourceHint === 'pdf_text' || sourceHint === 'gemini_vlm' || sourceHint === 'template_field';
   const drawY = isBottomLeftOrigin ? 1 - y - h : y;
 
   ctx.strokeStyle = strokeColor;

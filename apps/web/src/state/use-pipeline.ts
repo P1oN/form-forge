@@ -33,9 +33,13 @@ const resolveGeminiConfidenceThreshold = (rawValue?: string): number => {
 };
 
 export const usePipeline = () => {
-  const [state, setState] = useState<PipelineState>({
+  const initialState: PipelineState = {
     running: false,
     progress: [],
+  };
+
+  const [state, setState] = useState<PipelineState>({
+    ...initialState,
   });
 
   const run = useMemo(
@@ -128,9 +132,17 @@ export const usePipeline = () => {
     [],
   );
 
+  const reset = useMemo(
+    () => () => {
+      setState({ ...initialState });
+    },
+    [],
+  );
+
   return {
     state,
     run,
     rerunFillOnly,
+    reset,
   };
 };
