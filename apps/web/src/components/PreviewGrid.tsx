@@ -66,15 +66,17 @@ export const PreviewGrid = ({ entries, pageSize = 4, onFocusedFieldIdChange }: P
             onClick={() => setPinnedFieldId((current) => (current === entry.fieldId ? undefined : entry.fieldId))}
             title={entry.fieldId}
           >
-            <div className="field-label">{toDisplayLabel(entry.fieldId, entry.targetPdfFieldName)}</div>
+            <div className="field-label">
+              <span className="truncate-line" title={toDisplayLabel(entry.fieldId, entry.targetPdfFieldName)}>{toDisplayLabel(entry.fieldId, entry.targetPdfFieldName)}:</span>
+              <span title={String(entry.value)}>{String(entry.value)}</span>
+            </div>
             {showDebugInfo ?
-              <>
-                <div className="field-id-muted truncate-line">{entry.fieldId}</div>
-                <div>BBox: {entry.source.bbox ? entry.source.bbox.join(', ') : 'n/a'}</div>
+              <div className="debug-info-block field-id-muted">
+                <div className="truncate-line">{entry.fieldId}</div>
                 <div>Source: {entry.source.sourceHint}</div>
-              </> : null
+                <div>BBox: {entry.source.bbox ? entry.source.bbox.join(', ') : 'n/a'}</div>
+              </div> : null
             }
-            <div>Value: {String(entry.value)}</div>
           </button>
         ))}
       </div>

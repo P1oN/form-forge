@@ -425,14 +425,25 @@ button:disabled {
 }
 
 .field-label {
-    display: block;
-    font-weight: 600;
+    display: inline-flex;
+    justify-content: space-between;
+    
+    & > :first-child {
+        display: inline-block;
+        max-width: 45%;
+        font-weight: 600;
+        margin-inline-end: 0.25rem;
+    }
 }
 
 .field-id-muted {
     color: #7f8c7e;
     font-size: 0.8rem;
-    margin-bottom: 0.25rem;
+}
+
+.debug-info-block {
+    display: grid;
+    gap: .25rem;
 }
 
 @media (max-width: 720px) {
