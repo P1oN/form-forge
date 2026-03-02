@@ -1,6 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import { describe, expect, it } from 'vitest';
 
+import { applyManualEdits } from '../src/fill/apply-manual-edits';
 import { fillPdf } from '../src/fill/fill-pdf';
 
 const createAcroPdf = async (): Promise<ArrayBuffer> => {
@@ -160,5 +161,31 @@ describe('fillPdf', () => {
 
     const loaded = await PDFDocument.load(filled);
     expect(loaded.getForm().getCheckBox('agree_terms').isChecked()).toBe(false);
+  });
+
+  it('fills checkbox from unresolved-only plan after manual edit materialization', async () => {
+    const pdf = await createAcroPdfWithCheckbox();
+    const manuallyEdited = applyManualEdits(
+      {
+        entries: [],
+        unresolved: [{ fieldId: 'agree_field', reason: 'No extraction blocks available.', confidence: 0 }],
+        createdAt: new Date().toISOString(),
+      },
+      [{ fieldId: 'agree_field', value: true }],
+      [
+        {
+          fieldId: 'agree_field',
+          fieldType: 'checkbox',
+          pageIndex: 0,
+          bbox: [0.1, 0.1, 0.05, 0.05],
+          bboxOrigin: 'bottom_left',
+          pdfFieldName: 'agree_terms',
+        },
+      ],
+    );
+
+    const filled = await fillPdf(pdf, manuallyEdited);
+    const loaded = await PDFDocument.load(filled);
+    expect(loaded.getForm().getCheckBox('agree_terms').isChecked()).toBe(true);
   });
 });

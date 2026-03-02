@@ -134,4 +134,16 @@ describe('manual edit payload shaping', () => {
     });
     expect(payload).toEqual([{ fieldId: 'full_name', value: 'Ada Lovelace' }]);
   });
+
+  it('emits checkbox payload even when unresolved field has no prior entry', () => {
+    const payload = buildManualEditsPayload({
+      edits: { agree: true },
+      entryByFieldId: new Map(),
+      templateFieldById: new Map([
+        ['agree', { fieldId: 'agree', fieldType: 'checkbox', pageIndex: 0, bbox: [0, 0, 1, 1] }],
+      ]),
+      presumableValueByFieldId: {},
+    });
+    expect(payload).toEqual([{ fieldId: 'agree', value: true }]);
+  });
 });

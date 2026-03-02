@@ -34,17 +34,17 @@ interface GeminiClientLike {
 const answerSchema = z
   .object({
     fieldId: z.string().min(1),
-    typedText: z.string().optional(),
-    checked: z.boolean().optional(),
-    selectedOption: z.string().optional(),
-    confidence: z.number().min(0).max(1).optional(),
-    reason: z.string().nullable().optional(),
+    typedText: z.unknown().optional(),
+    checked: z.unknown().optional(),
+    selectedOption: z.unknown().optional(),
+    confidence: z.unknown().optional(),
+    reason: z.unknown().optional(),
   })
-  .strict();
+  .strip();
 
 const geminiResponseSchema = z
   .object({
-    answers: z.array(answerSchema),
+    answers: z.array(z.unknown()),
   })
   .strict();
 
@@ -87,6 +87,54 @@ const getErrorStatus = (error: unknown): number | undefined => {
 };
 
 const DEFAULT_MODEL = 'gemini-2.5-flash-lite';
+const TRUE_CHECKBOX_TOKENS = new Set(['true', 'yes', 'checked', 'on', '1', 'x', '✓', '☑']);
+const FALSE_CHECKBOX_TOKENS = new Set(['false', 'no', 'unchecked', 'off', '0', '']);
+
+const coerceTextAnswer = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const coerceCheckboxAnswer = (value: unknown): boolean | undefined => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (TRUE_CHECKBOX_TOKENS.has(normalized)) {
+    return true;
+  }
+  if (FALSE_CHECKBOX_TOKENS.has(normalized)) {
+    return false;
+  }
+  return undefined;
+};
+
+const coerceConfidence = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return clamp01(value);
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return clamp01(parsed);
+    }
+  }
+  return 0.5;
+};
+
+const coerceReason = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
 
 export class GeminiVisionProvider implements LLMProvider {
   public readonly name = 'gemini-vision';
@@ -176,7 +224,6 @@ export class GeminiVisionProvider implements LLMProvider {
         rawContent = response.text;
         this.options.logger?.info('Gemini request succeeded', {
           attempt: attempt + 1,
-          rawContent,
         });
         break;
       } catch (error) {
@@ -216,10 +263,34 @@ export class GeminiVisionProvider implements LLMProvider {
       throw new MappingError('Gemini returned invalid JSON.', error);
     }
 
-    const structured = geminiResponseSchema.parse(parsed);
-    const byFieldId = new Map(structured.answers.map((answer) => [answer.fieldId, answer]));
+    const structured = geminiResponseSchema.safeParse(parsed);
+    if (!structured.success) {
+      throw new MappingError('Gemini returned an invalid response shape.');
+    }
+
+    let malformedAnswers = 0;
+    let missingFieldIdAnswers = 0;
+    const byFieldId = new Map<string, z.infer<typeof answerSchema>>();
+    structured.data.answers.forEach((rawAnswer) => {
+      const answer = answerSchema.safeParse(rawAnswer);
+      if (!answer.success) {
+        if (
+          typeof rawAnswer === 'object' &&
+          rawAnswer !== null &&
+          (!('fieldId' in rawAnswer) || typeof (rawAnswer as { fieldId?: unknown }).fieldId !== 'string')
+        ) {
+          missingFieldIdAnswers += 1;
+        } else {
+          malformedAnswers += 1;
+        }
+        return;
+      }
+      byFieldId.set(answer.data.fieldId, answer.data);
+    });
+
     const entries: FillPlan['entries'] = [];
     const unresolved: FillPlan['unresolved'] = [];
+    let checkboxStringCoercions = 0;
 
     unresolvedFields.forEach((field) => {
       const answer = byFieldId.get(field.fieldId);
@@ -232,21 +303,29 @@ export class GeminiVisionProvider implements LLMProvider {
         return;
       }
 
-      const confidence = clamp01(answer.confidence ?? 0.5);
+      const confidence = coerceConfidence(answer.confidence);
       let value: string | boolean | undefined;
+      const reason = coerceReason(answer.reason);
 
       if (field.fieldType === 'checkbox') {
-        value = answer.checked;
+        const rawCheckboxValue = answer.checked ?? answer.typedText;
+        if (typeof rawCheckboxValue === 'string') {
+          const normalized = rawCheckboxValue.trim().toLowerCase();
+          if (TRUE_CHECKBOX_TOKENS.has(normalized) || FALSE_CHECKBOX_TOKENS.has(normalized)) {
+            checkboxStringCoercions += 1;
+          }
+        }
+        value = coerceCheckboxAnswer(rawCheckboxValue);
       } else if (field.fieldType === 'radio') {
-        value = answer.selectedOption;
+        value = coerceTextAnswer(answer.selectedOption) ?? coerceTextAnswer(answer.typedText);
       } else {
-        value = answer.typedText;
+        value = coerceTextAnswer(answer.typedText);
       }
 
-      if (typeof value === 'undefined' || value === '') {
+      if (typeof value === 'undefined') {
         unresolved.push({
           fieldId: field.fieldId,
-          reason: answer.reason ?? 'No usable value returned by Gemini.',
+          reason: reason ?? 'No usable value returned by Gemini.',
           confidence,
         });
         return;
@@ -265,18 +344,26 @@ export class GeminiVisionProvider implements LLMProvider {
         },
         targetPdfFieldName: field.pdfFieldName,
         ...(confidence < this.options.confidenceThreshold
-          ? { unresolvedReason: answer.reason ?? 'Below confidence threshold.' }
+          ? { unresolvedReason: reason ?? 'Below confidence threshold.' }
           : {}),
       });
 
       if (confidence < this.options.confidenceThreshold) {
         unresolved.push({
           fieldId: field.fieldId,
-          reason: answer.reason ?? 'Below confidence threshold.',
+          reason: reason ?? 'Below confidence threshold.',
           confidence,
         });
       }
     });
+
+    if (malformedAnswers > 0 || missingFieldIdAnswers > 0 || checkboxStringCoercions > 0) {
+      this.options.logger?.warn('Gemini response normalization applied', {
+        malformedAnswers,
+        missingFieldIdAnswers,
+        checkboxStringCoercions,
+      });
+    }
 
     const fillPlan = fillPlanSchema.parse({
       entries,

@@ -12,7 +12,7 @@ type PipelineView = 'setup' | 'progress' | 'review' | 'fin';
 
 export const App = () => {
   const [templateFile, setTemplateFile] = useState<File>();
-  const [clientFile, setClientFile] = useState<File>([]);
+  const [clientFile, setClientFile] = useState<File | undefined>();
   const [recognitionEngine, setRecognitionEngine] = useState<RecognitionEngine>('gemini');
   const [view, setView] = useState<PipelineView>('setup');
   const [runRequested, setRunRequested] = useState(false);
@@ -129,7 +129,7 @@ export const App = () => {
                 return;
               }
 
-              const updatedPlan = applyManualEdits(state.result.fillPlan, edits);
+              const updatedPlan = applyManualEdits(state.result.fillPlan, edits, state.result.template.fields);
               await rerunFillOnly(templateFile, updatedPlan);
             }}
           />

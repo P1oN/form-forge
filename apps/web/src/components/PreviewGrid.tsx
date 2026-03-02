@@ -15,7 +15,7 @@ const toDisplayLabel = (fieldId: string, targetPdfFieldName?: string): string =>
     .trim();
 };
 
-export const PreviewGrid = ({ entries, pageSize = 8, onFocusedFieldIdChange }: PreviewGridProps) => {
+export const PreviewGrid = ({ entries, pageSize = 4, onFocusedFieldIdChange }: PreviewGridProps) => {
   const [pageIndex, setPageIndex] = useState(0);
   const [pinnedFieldId, setPinnedFieldId] = useState<string | undefined>(undefined);
   const [hoveredFieldId, setHoveredFieldId] = useState<string | undefined>(undefined);
@@ -64,11 +64,16 @@ export const PreviewGrid = ({ entries, pageSize = 8, onFocusedFieldIdChange }: P
             onMouseEnter={() => setHoveredFieldId(entry.fieldId)}
             onMouseLeave={() => setHoveredFieldId(undefined)}
             onClick={() => setPinnedFieldId((current) => (current === entry.fieldId ? undefined : entry.fieldId))}
+            title={entry.fieldId}
           >
             <div className="field-label">{toDisplayLabel(entry.fieldId, entry.targetPdfFieldName)}</div>
-            <div className="field-id-muted">{entry.fieldId}</div>
-            {showDebugInfo ? <div>BBox: {entry.source.bbox ? entry.source.bbox.join(', ') : 'n/a'}</div> : null}
-            {showDebugInfo ? <div>Source: {entry.source.sourceHint}</div> : null}
+            {showDebugInfo ?
+              <>
+                <div className="field-id-muted truncate-line">{entry.fieldId}</div>
+                <div>BBox: {entry.source.bbox ? entry.source.bbox.join(', ') : 'n/a'}</div>
+                <div>Source: {entry.source.sourceHint}</div>
+              </> : null
+            }
             <div>Value: {String(entry.value)}</div>
           </button>
         ))}

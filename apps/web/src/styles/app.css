@@ -383,7 +383,7 @@ button:disabled {
 
 .preview-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 0.6rem;
 }
 
@@ -394,14 +394,18 @@ button:disabled {
 }
 
 .preview-card {
+    --preview-card-padding: 0.5rem;
+
+    display: grid;
+    gap: var(--preview-card-padding);
     border: 1px solid #d8dfd2;
     border-radius: 8px;
-    padding: 0.5rem;
+    padding: var(--preview-card-padding);
     background: #fbfdf8;
 }
 
 .preview-card--button {
-    text-align: left;
+    text-align: start;
     width: 100%;
     border-radius: 8px;
     color: inherit;
@@ -446,4 +450,10 @@ button:disabled {
     border: 1px solid #d8dfd2;
     border-radius: 8px;
     margin-bottom: 1rem;
+}
+
+.truncate-line {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }

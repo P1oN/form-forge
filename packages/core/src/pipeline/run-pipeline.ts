@@ -96,7 +96,7 @@ export const runPipeline = async (args: PipelineArgs) => {
     });
 
     const fillPlan: FillPlan = args.manualEdits?.length
-      ? applyManualEdits(mapped.fillPlan, args.manualEdits)
+      ? applyManualEdits(mapped.fillPlan, args.manualEdits, template.fields)
       : mapped.fillPlan;
 
     args.onProgress?.({ phase: 'D', percent: 85, message: 'Generating filled PDF' });
