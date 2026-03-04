@@ -164,3 +164,7 @@ Note: field-test loader uses Vite dev `@fs` path access and is intended for loca
   - AcroForm template widget bboxes use `bottom_left`.
   - Flat template region config defaults to `top_left` when omitted.
 - Web preview uses `bboxOrigin` explicitly; it does not infer geometry from `sourceHint`.
+
+## Issues:
+- Still troubles with checkbox detection
+- Try to parse PDF page per lines/blocks/question
