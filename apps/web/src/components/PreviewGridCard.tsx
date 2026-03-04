@@ -1,6 +1,6 @@
 import type { FillPlan } from '@form-forge/core';
 
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, InputHTMLAttributes } from 'react';
 
 interface PreviewGridCardProps {
   entry: FillPlan['entries'][number];
@@ -49,7 +49,7 @@ export const PreviewGridCard = ({
         <span className="truncate-line" title={displayLabel}>
           {displayLabel}:
         </span>
-        <ValueInput fieldType={entry.fieldType} value={value} onValueChange={onValueChange} />
+        <ValueInput fieldType={entry.fieldType} value={value} onValueChange={onValueChange} name={displayLabel} />
       </label>
       {showDebugInfo ? (
         <div className="debug-info-block field-id-muted">
@@ -71,7 +71,7 @@ type ValueByFieldType = {
 type ValueFor<T extends FieldType> =
   T extends keyof ValueByFieldType ? ValueByFieldType[T] : string;
 
-type Props<T extends FieldType> = {
+type Props<T extends FieldType> = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> & {
   fieldType: T;
   value: ValueFor<T> | undefined;
   onValueChange: (value: ValueFor<T>) => void;
@@ -86,7 +86,7 @@ function ValueInput<T extends FieldType>(props: Props<T>) {
     return <TextInput {...rest as TextProps} />
 }
 
-interface CheckboxProps {
+interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> {
   value: boolean | undefined;
   onValueChange: (value: boolean) => void;
 }
@@ -109,7 +109,7 @@ function CheckboxInput(props: CheckboxProps) {
   )
 }
 
-interface TextProps {
+interface TextProps extends InputHTMLAttributes<HTMLInputElement> {
   value: string | undefined;
   onValueChange: (value: string) => void;
 }

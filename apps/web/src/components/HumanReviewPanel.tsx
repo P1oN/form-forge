@@ -277,7 +277,7 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
               <div>Confidence: {item.confidence.toFixed(2)}</div>
             </div>
             <div>
-              <label>
+              <label className='regular-label'>
                 Manual value
                 {resolveManualInputType(item.fieldId, entryByFieldId, templateFieldById) === 'checkbox' ? (
                   <input

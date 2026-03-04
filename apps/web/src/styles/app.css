@@ -57,11 +57,6 @@ h1:first-child {
     margin-block-start: 1rem;
 }
 
-label {
-    display: grid;
-    gap: 0.4rem;
-}
-
 .upload-panel {
 }
 
@@ -238,6 +233,7 @@ label {
 }
 
 button {
+    font-size: 1rem;
     border: 0;
     border-radius: 999px;
     background: var(--accent);
@@ -393,6 +389,16 @@ button:disabled {
     flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
+    
+    & > label {
+        display: flex;
+        gap: 0.4rem;
+        
+        border-radius: 999px;
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        padding: 0.5rem 0.9rem;
+    }
 }
 
 .preview-grid--cols-1 {
@@ -445,10 +451,21 @@ button:disabled {
         font-weight: 600;
         margin-inline-end: 0.25rem;
     }
+    
+    & input[type="text"] {
+        width: 50%;
+        border: 0;
+        background-color: transparent;
+    }
+}
+
+.regular-label {
+    display: flex;
+    gap: .4rem;
 }
 
 .preview-card-edit {
-    display: grid;
+    display: flex;
     gap: 0.25rem;
 }
 

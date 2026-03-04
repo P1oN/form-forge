@@ -96,7 +96,7 @@ export const PreviewGrid = ({
           </select>
         </label>
         <label>
-          Items per page
+          Items
           <select
             value={String(pageSize)}
             onChange={(e) => {
@@ -107,7 +107,7 @@ export const PreviewGrid = ({
           >
             {PAGE_SIZE_OPTIONS.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {option} per line
               </option>
             ))}
           </select>
