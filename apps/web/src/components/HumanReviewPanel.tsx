@@ -15,6 +15,13 @@ interface HumanReviewPanelProps {
   onApplyEdits: (edits: Array<{ fieldId: string; value: string | boolean }>) => Promise<void>;
 }
 
+export interface FieldEditDraft {
+  value: string | boolean;
+  updatedAt: number;
+}
+
+export type FieldEditDraftByFieldId = Record<string, FieldEditDraft>;
+
 export const resolveManualInputType = (
   fieldId: string,
   entryByFieldId: Map<string, FillPlan['entries'][number]>,
@@ -28,21 +35,38 @@ export const resolveManualInputType = (
   return templateType === 'checkbox' ? 'checkbox' : 'text';
 };
 
+export const mergeEditDraft = (
+  currentDraft: FieldEditDraft | undefined,
+  incomingDraft: FieldEditDraft,
+): FieldEditDraft => {
+  if (!currentDraft) {
+    return incomingDraft;
+  }
+  return incomingDraft.updatedAt >= currentDraft.updatedAt ? incomingDraft : currentDraft;
+};
+
 export const buildManualEditsPayload = (args: {
-  edits: Record<string, string | boolean>;
+  editDraftByFieldId: FieldEditDraftByFieldId;
   entryByFieldId: Map<string, FillPlan['entries'][number]>;
   templateFieldById: Map<string, TemplateField>;
   presumableValueByFieldId: Record<string, string | boolean>;
 }): Array<{ fieldId: string; value: string | boolean }> => {
-  return Object.entries(args.edits).flatMap<{ fieldId: string; value: string | boolean }>(([fieldId, value]) => {
+  return Object.entries(args.editDraftByFieldId).flatMap<{ fieldId: string; value: string | boolean }>(([
+    fieldId,
+    draft,
+  ]) => {
+    const value = draft.value;
     if (resolveManualInputType(fieldId, args.entryByFieldId, args.templateFieldById) === 'checkbox') {
       const initialValue = Boolean(args.presumableValueByFieldId[fieldId]);
       const currentValue = Boolean(value);
       return currentValue !== initialValue ? [{ fieldId, value: currentValue }] : [];
     }
 
-    const textValue = typeof value === 'string' ? value : String(value);
-    return textValue.trim().length > 0 ? [{ fieldId, value: textValue }] : [];
+    const initialValue = args.presumableValueByFieldId[fieldId];
+    const initialTextValue = typeof initialValue === 'string' ? initialValue : String(initialValue ?? '');
+    const textValue = typeof value === 'string' ? value : String(value ?? '');
+
+    return textValue !== initialTextValue ? [{ fieldId, value: textValue }] : [];
   });
 };
 
@@ -73,7 +97,7 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
   const unresolved = result?.fillPlan.unresolved ?? [];
   const entries = result?.fillPlan.entries ?? [];
   const templateFields = result?.templateFields ?? [];
-  const [edits, setEdits] = useState<Record<string, string | boolean>>({});
+  const [editDraftByFieldId, setEditDraftByFieldId] = useState<FieldEditDraftByFieldId>({});
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewFocusedFieldId, setPreviewFocusedFieldId] = useState<string | undefined>(undefined);
@@ -95,6 +119,14 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
       }, {}),
     [entries],
   );
+  const effectiveValueByFieldId = useMemo<Record<string, string | boolean>>(
+    () =>
+      entries.reduce<Record<string, string | boolean>>((accumulator, entry) => {
+        accumulator[entry.fieldId] = editDraftByFieldId[entry.fieldId]?.value ?? entry.value;
+        return accumulator;
+      }, {}),
+    [editDraftByFieldId, entries],
+  );
 
   useEffect(() => {
     setActiveIndex((current) => {
@@ -106,26 +138,39 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
   }, [unresolvedEntries.length]);
 
   useEffect(() => {
-    setEdits((current) => {
-      const next: Record<string, string | boolean> = {};
+    setEditDraftByFieldId((current) => {
+      const next: FieldEditDraftByFieldId = {};
+      const allFieldIds = new Set<string>([
+        ...entries.map((entry) => entry.fieldId),
+        ...unresolvedEntries.map((entry) => entry.fieldId),
+      ]);
 
-      unresolvedEntries.forEach((item) => {
-        if (Object.prototype.hasOwnProperty.call(current, item.fieldId)) {
-          next[item.fieldId] = current[item.fieldId] ?? '';
-          return;
-        }
-        next[item.fieldId] = presumableValueByFieldId[item.fieldId] ?? '';
+      allFieldIds.forEach((fieldId) => {
+        const initialValue = presumableValueByFieldId[fieldId];
+        const defaultValue =
+          initialValue ??
+          (resolveManualInputType(fieldId, entryByFieldId, templateFieldById) === 'checkbox' ? false : '');
+        const existingDraft = current[fieldId];
+        const defaultDraft: FieldEditDraft = { value: defaultValue, updatedAt: 0 };
+        next[fieldId] = mergeEditDraft(existingDraft, defaultDraft);
       });
 
       const currentKeys = Object.keys(current);
       const nextKeys = Object.keys(next);
-      if (currentKeys.length === nextKeys.length && nextKeys.every((key) => current[key] === next[key])) {
+      if (
+        currentKeys.length === nextKeys.length &&
+        nextKeys.every(
+          (key) =>
+            current[key]?.updatedAt === next[key]?.updatedAt &&
+            current[key]?.value === next[key]?.value,
+        )
+      ) {
         return current;
       }
 
       return next;
     });
-  }, [unresolvedEntries, presumableValueByFieldId]);
+  }, [entries, entryByFieldId, presumableValueByFieldId, templateFieldById, unresolvedEntries]);
 
   const activeItem = unresolvedEntries[activeIndex];
   const selectedFieldId = activeItem?.fieldId;
@@ -154,6 +199,13 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
   );
   const previewStrokeColor = previewFocusedEntry ? '#1d4ed8' : '#c9382b';
   const itemsToRender = viewMode === 'all' ? unresolvedEntries : activeItem ? [activeItem] : [];
+  const updateFieldDraftValue = (fieldId: string, value: string | boolean) => {
+    const now = Date.now();
+    setEditDraftByFieldId((current) => ({
+      ...current,
+      [fieldId]: mergeEditDraft(current[fieldId], { value, updatedAt: now }),
+    }));
+  };
 
   const goNext = () => {
     if (unresolvedEntries.length === 0) {
@@ -230,17 +282,17 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
                 {resolveManualInputType(item.fieldId, entryByFieldId, templateFieldById) === 'checkbox' ? (
                   <input
                     type="checkbox"
-                    checked={Boolean(edits[item.fieldId])}
-                    onChange={(e) => setEdits((current) => ({ ...current, [item.fieldId]: e.target.checked }))}
+                    checked={Boolean(editDraftByFieldId[item.fieldId]?.value)}
+                    onChange={(e) => updateFieldDraftValue(item.fieldId, e.target.checked)}
                   />
                 ) : (
                   (() => {
-                    const editValue = edits[item.fieldId];
+                    const editValue = editDraftByFieldId[item.fieldId]?.value;
                     return (
                       <input
                         type="text"
                         value={typeof editValue === 'string' ? editValue : String(editValue ?? '')}
-                        onChange={(e) => setEdits((current) => ({ ...current, [item.fieldId]: e.target.value }))}
+                        onChange={(e) => updateFieldDraftValue(item.fieldId, e.target.value)}
                       />
                     );
                   })()
@@ -255,7 +307,7 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
         onClick={() =>
           void onApplyEdits(
             buildManualEditsPayload({
-              edits,
+              editDraftByFieldId,
               entryByFieldId,
               templateFieldById,
               presumableValueByFieldId,
@@ -273,7 +325,14 @@ export const HumanReviewPanel = ({ result, sourceFile, onApplyEdits }: HumanRevi
         pageIndex={previewPageIndex}
         strokeColor={previewStrokeColor}
       />
-      <PreviewGrid entries={result.fillPlan.entries} onFocusedFieldIdChange={setPreviewFocusedFieldId} />
+      <PreviewGrid
+        entries={result.fillPlan.entries}
+        valueByFieldId={effectiveValueByFieldId}
+        onEntryValueChange={updateFieldDraftValue}
+        defaultColumns={1}
+        defaultPageSize={6}
+        onFocusedFieldIdChange={setPreviewFocusedFieldId}
+      />
     </section>
   );
 };

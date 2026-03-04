@@ -383,14 +383,24 @@ button:disabled {
 
 .preview-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 0.6rem;
 }
 
 .preview-toolbar {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     margin-bottom: 0.5rem;
+}
+
+.preview-grid--cols-1 {
+    grid-template-columns: 1fr;
+}
+
+.preview-grid--cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .preview-card {
@@ -409,6 +419,7 @@ button:disabled {
     width: 100%;
     border-radius: 8px;
     color: inherit;
+    cursor: pointer;
 }
 
 .preview-card--active {
@@ -436,6 +447,11 @@ button:disabled {
     }
 }
 
+.preview-card-edit {
+    display: grid;
+    gap: 0.25rem;
+}
+
 .field-id-muted {
     color: #7f8c7e;
     font-size: 0.8rem;
@@ -452,6 +468,10 @@ button:disabled {
     }
 
     .review-row {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-grid--cols-2 {
         grid-template-columns: 1fr;
     }
 }

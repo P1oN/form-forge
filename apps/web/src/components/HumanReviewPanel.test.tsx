@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildManualEditsPayload, resolveManualInputType, resolvePreviewBBoxOrigin } from './HumanReviewPanel';
+import { buildManualEditsPayload, mergeEditDraft, resolveManualInputType, resolvePreviewBBoxOrigin } from './HumanReviewPanel';
 
 describe('resolvePreviewBBoxOrigin', () => {
   it('uses focused entry origin first', () => {
@@ -95,7 +95,7 @@ describe('resolveManualInputType', () => {
 describe('manual edit payload shaping', () => {
   it('emits boolean payload for changed checkbox edits', () => {
     const payload = buildManualEditsPayload({
-      edits: { agree: true },
+      editDraftByFieldId: { agree: { value: true, updatedAt: 1 } },
       entryByFieldId: new Map([
         [
           'agree',
@@ -116,7 +116,7 @@ describe('manual edit payload shaping', () => {
 
   it('emits string payload for non-empty text edits', () => {
     const payload = buildManualEditsPayload({
-      edits: { full_name: 'Ada Lovelace' },
+      editDraftByFieldId: { full_name: { value: 'Ada Lovelace', updatedAt: 1 } },
       entryByFieldId: new Map([
         [
           'full_name',
@@ -137,7 +137,7 @@ describe('manual edit payload shaping', () => {
 
   it('emits checkbox payload even when unresolved field has no prior entry', () => {
     const payload = buildManualEditsPayload({
-      edits: { agree: true },
+      editDraftByFieldId: { agree: { value: true, updatedAt: 1 } },
       entryByFieldId: new Map(),
       templateFieldById: new Map([
         ['agree', { fieldId: 'agree', fieldType: 'checkbox', pageIndex: 0, bbox: [0, 0, 1, 1] }],
@@ -145,5 +145,42 @@ describe('manual edit payload shaping', () => {
       presumableValueByFieldId: {},
     });
     expect(payload).toEqual([{ fieldId: 'agree', value: true }]);
+  });
+
+  it('omits unchanged text edits', () => {
+    const payload = buildManualEditsPayload({
+      editDraftByFieldId: { full_name: { value: 'Ada', updatedAt: 1 } },
+      entryByFieldId: new Map([
+        [
+          'full_name',
+          {
+            fieldId: 'full_name',
+            fieldType: 'text',
+            value: 'Ada',
+            confidence: 0.9,
+            source: { pageIndex: 0, sourceHint: 'ocr' },
+          },
+        ],
+      ]),
+      templateFieldById: new Map(),
+      presumableValueByFieldId: { full_name: 'Ada' },
+    });
+    expect(payload).toEqual([]);
+  });
+});
+
+describe('mergeEditDraft', () => {
+  it('keeps the most recent draft update', () => {
+    const current = { value: 'first', updatedAt: 10 };
+
+    expect(mergeEditDraft(current, { value: 'second', updatedAt: 11 })).toEqual({
+      value: 'second',
+      updatedAt: 11,
+    });
+
+    expect(mergeEditDraft(current, { value: 'older', updatedAt: 9 })).toEqual({
+      value: 'first',
+      updatedAt: 10,
+    });
   });
 });
